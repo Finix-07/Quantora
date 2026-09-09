@@ -3,6 +3,9 @@ package httpapi
 import (
 	"log/slog"
 	"net/http"
+
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/backtest"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
 )
 
 // Version is the code version reported by /healthz and stamped onto saved
@@ -14,8 +17,10 @@ var Version = "dev"
 // collaborators explicitly rather than reaching for globals, which keeps them
 // testable and keeps business logic out of the HTTP layer.
 type RouterDeps struct {
-	Logger *slog.Logger
-	Health *HealthRegistry
+	Logger    *slog.Logger
+	Health    *HealthRegistry
+	Backtests *backtest.Service
+	Quant     *quant.Client
 }
 
 // NewRouter builds the API's HTTP surface. Routes are registered here only;
@@ -24,6 +29,20 @@ func NewRouter(deps RouterDeps) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", HealthHandler(Version, deps.Health))
+
+	if deps.Backtests != nil {
+		handlers := BacktestHandlers{Service: deps.Backtests, Logger: deps.Logger}
+		mux.HandleFunc("POST /api/backtests", handlers.Create)
+		mux.HandleFunc("GET /api/backtests", handlers.List)
+		mux.HandleFunc("GET /api/backtests/{id}", handlers.Get)
+	}
+
+	if deps.Quant != nil {
+		market := MarketHandlers{Client: deps.Quant, Logger: deps.Logger}
+		mux.HandleFunc("GET /api/universe", market.Universe)
+		mux.HandleFunc("GET /api/strategies", market.Strategies)
+		mux.HandleFunc("GET /api/market/{symbol}", market.Prices)
+	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, http.StatusNotFound, CodeNotFound,

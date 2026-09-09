@@ -17,9 +17,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/backtest"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/config"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/httpapi"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/logging"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/storage/postgres"
 )
 
@@ -105,9 +107,19 @@ func run() error {
 	health.Register("process", func(context.Context) error { return nil })
 	health.Register("database", postgres.HealthCheck(pool))
 
+	quantClient := quant.New(cfg.QuantMCPURL, cfg.QuantMCPTimeout, log)
+	health.Register("quant_mcp", quantClient.HealthCheck)
+
+	backtests := backtest.NewService(quantClient, backtest.NewMemoryStore(200))
+
 	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           httpapi.NewRouter(httpapi.RouterDeps{Logger: log, Health: health}),
+		Addr: fmt.Sprintf(":%d", cfg.Port),
+		Handler: httpapi.NewRouter(httpapi.RouterDeps{
+			Logger:    log,
+			Health:    health,
+			Backtests: backtests,
+			Quant:     quantClient,
+		}),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 10*time.Second,
 		IdleTimeout:       120 * time.Second,

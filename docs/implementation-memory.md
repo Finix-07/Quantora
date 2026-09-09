@@ -111,3 +111,70 @@ recorded the same way, with "What failed" left as `n/a`.
   `npm run lint`/`typecheck`/`build`, and the full `docker compose up --wait`
   health-check sweep.
 - **To unblock:** `git remote add origin <url>` then `git push -u origin main`.
+
+## M2 — data layer and walking skeleton
+
+### 2026-09-10 — yfinance 1.7.0 behaviour (M2.1)
+
+- `yfinance.download()` returns **MultiIndex columns even for a single ticker**
+  (`('Close', 'RELIANCE.NS')`). Flattening to the first level is required.
+- The index is **tz-naive for daily bars** and tz-aware for intraday. Daily NSE
+  bars are localised to `Asia/Kolkata`.
+- `end` is **exclusive**. The requested window is widened by one day and the
+  result trimmed back, or the last requested session silently disappears.
+- `NIFTY` / `BANKNIFTY` are **not** Yahoo tickers. The working tickers are
+  `^NSEI` and `^NSEBANK`. User-facing symbol and provider ticker are separate
+  fields, both recorded in provenance.
+- Gap detection over 2024-Q1 finds exactly 4 one-session gaps for both NIFTY and
+  RELIANCE.NS — these are the real NSE holidays, so the detector is finding
+  signal, not noise.
+
+### 2026-09-10 — MACD conviction must not be graded by the histogram (M2.7)
+
+- **Problem:** RELIANCE.NS 2020-2024 backtested to +5.6% with 9.8% average
+  exposure while reporting itself long.
+- **Root cause:** signal `strength` was `|histogram| / expanding_mean(|histogram|)`.
+  At a crossover the histogram is *by construction* near zero, so every entry
+  was sized at almost nothing.
+- **Fix:** a crossover is a binary event, so conviction is binary (1.0 while
+  positioned, 0.0 while flat).
+- **Result:** exposure 9.8% → 47.1%, return +5.6% → +29.2% against a +79.3%
+  buy-and-hold — a believable trend-following underperformance.
+- **Lesson:** never grade conviction by the same quantity whose *sign change*
+  defined the signal.
+
+### 2026-09-10 — Two engine behaviours found only by running on real data (M2.7)
+
+- **Position churn:** target quantity is a function of equity and conviction,
+  both of which drift, so the engine re-traded on every bar — 118 "trades" over
+  300 bars. Fix: only re-size when the target *direction* changes;
+  `Strategy.rebalances_continuously` opts back in.
+- **Useless stops:** after a discretionary exit the strategy's target direction
+  still pointed the same way, so the engine re-entered on the next bar. Fix:
+  suppress re-entry until the signal itself changes.
+- **Lesson:** both bugs pass every unit test that checks a single bar. They only
+  appear when the trade count over a long run is inspected for plausibility.
+
+### 2026-09-10 — Test-fixture defect that silently injected slippage (M2.7)
+
+- A `make_fill` helper defaulted `reference_price=100.0` while tests set
+  `fill_price=110.0` and commented "no slippage". `FillEvent.slippage_cost` is
+  `|fill - reference| * qty`, so every such expectation was off by 40.
+- **Fix:** default `reference_price` to `fill_price`.
+- **Lesson:** a fixture default that is independent of the value under test will
+  eventually contradict the test's own stated intent.
+
+### 2026-09-10 — Verified end-to-end through the Go API (M2.10)
+
+Known-good, against the running stack:
+
+```
+curl -s -X POST localhost:8080/api/backtests -H 'Content-Type: application/json' \
+  -d '{"symbol":"RELIANCE.NS","strategy":"macd","start":"2022-01-01","end":"2024-12-31"}'
+```
+
+returns 30 trades over 739 bars with provenance, assumptions and data-quality
+attached; `GET /api/backtests/{id}` round-trips it. Error paths verified:
+unknown symbol → 400 listing the known symbols, too-short range → 400 naming
+the warm-up requirement, unknown JSON field → 400 naming the field (a typo'd
+`commision_bps` must not silently apply the default cost model).

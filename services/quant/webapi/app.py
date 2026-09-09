@@ -26,6 +26,7 @@ from services.quant.webapi.errors import (
     error_response,
     service_error_handler,
 )
+from services.quant.webapi.routes import router as quant_router
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -132,6 +133,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "The quant service hit an unexpected internal error. "
             "The request_id below identifies this failure in the service logs.",
         )
+
+    # Quant capabilities live under /v1 so the ops endpoints stay unversioned
+    # and a future contract change does not have to move /healthz.
+    app.include_router(quant_router, prefix="/v1")
 
     @app.get("/healthz", response_model=HealthResponse, tags=["ops"])
     def healthz() -> JSONResponse:
