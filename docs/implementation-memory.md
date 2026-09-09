@@ -98,3 +98,16 @@ recorded the same way, with "What failed" left as `n/a`.
   binary; `quant-mcp` uses `python -c` with `urllib.request`; `web` uses
   `node -e` with `fetch`. Adding a shell or curl to an image purely for health
   probing was rejected as the worse trade.
+
+### 2026-09-10 — CI exists but cannot run: no git remote (M1.7)
+
+- **Blocker (external, unresolved):** this repository has **no configured git
+  remote**, and the `gh` CLI is not installed. `.github/workflows/ci.yml` is
+  committed and its steps are verified locally, but no GitHub Actions run can
+  be triggered and no commit can be pushed until a remote exists.
+- **What was done instead:** every CI step was executed locally against the same
+  commands the workflow runs — `ruff check`/`ruff format --check`, `pytest -m
+  "not network"`, `go vet`, `go test -race` against the real Postgres container,
+  `npm run lint`/`typecheck`/`build`, and the full `docker compose up --wait`
+  health-check sweep.
+- **To unblock:** `git remote add origin <url>` then `git push -u origin main`.

@@ -1,0 +1,161 @@
+# Correctness gate, not a deployment trigger — this project has no deployment
+# target beyond the user's machine (deployment.md §4).
+#
+# A milestone is not complete until its layer's checks here are green
+# (testing.md §1/§6). Jobs are scoped to what exists: the C++ suite arrives at
+# M4 and Playwright at M8, each added to this file by the unit that creates it.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.27"
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "22"
+
+jobs:
+  python:
+    name: Python — ruff + pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install -e ".[dev]"
+
+      - name: Lint
+        run: |
+          .venv/bin/python -m ruff check services tests
+          .venv/bin/python -m ruff format --check services tests
+
+      - name: Test
+        # `network`-marked tests hit yfinance/Gemini for real. They are excluded
+        # here because an external provider outage is not a code defect, and CI
+        # must fail only on things the repository can fix. The provider
+        # integration itself stays covered by deterministic fixtures.
+        run: .venv/bin/python -m pytest -m "not network" services tests
+
+  go:
+    name: Go — vet + test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # testing.md §2.3: repository behaviour is verified against a real
+        # PostgreSQL instance, because golang-migrate's bookkeeping and the
+        # queries themselves are part of what is being tested.
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: quant
+          POSTGRES_PASSWORD: quant_ci_password
+          POSTGRES_DB: quant
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U quant -d quant"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: apps/api/go.sum
+
+      - name: Apply migrations
+        run: |
+          curl -sSL "https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz" \
+            | tar xvz migrate
+          ./migrate -path db/migrations \
+            -database "postgres://quant:quant_ci_password@127.0.0.1:5432/quant?sslmode=disable" up
+
+      - name: Vet
+        working-directory: apps/api
+        run: go vet ./...
+
+      - name: Test
+        working-directory: apps/api
+        env:
+          TEST_DATABASE_URL: postgres://quant:quant_ci_password@127.0.0.1:5432/quant?sslmode=disable
+        run: go test -race ./...
+
+  web:
+    name: Web — eslint + tsc + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+
+  compose:
+    name: Stack — docker compose health checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare environment
+        # M1's Definition of Done is that the stack actually comes up, so CI
+        # asserts it rather than trusting that the Dockerfiles still build. The
+        # placeholder key satisfies the fail-loudly startup check without any
+        # real secret; nothing in this job calls Gemini.
+        run: |
+          cp .env.example .env
+          sed -i 's|^GEMINI_API_KEY=.*|GEMINI_API_KEY=ci-placeholder-not-a-real-key|' .env
+
+      - name: Start the stack
+        run: docker compose -f infra/compose/docker-compose.yml --env-file .env up -d --build --wait --wait-timeout 420
+
+      - name: Apply migrations
+        run: docker compose -f infra/compose/docker-compose.yml --env-file .env --profile tools run --rm migrate up
+
+      - name: Verify health endpoints
+        run: |
+          set -euo pipefail
+          curl -fsS http://localhost:8080/healthz | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS http://localhost:8000/healthz | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS http://localhost:3000/healthz | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: Verify the optional LLM runtime was not started
+        # deployment.md §2: a plain `docker compose up` must never start ollama.
+        run: |
+          if docker compose -f infra/compose/docker-compose.yml --env-file .env ps --services --status running | grep -qx ollama; then
+            echo "ollama started without the local-llm profile" >&2
+            exit 1
+          fi
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose -f infra/compose/docker-compose.yml --env-file .env logs --no-color
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml --env-file .env down -v
