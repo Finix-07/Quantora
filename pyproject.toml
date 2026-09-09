@@ -1,0 +1,54 @@
+[project]
+name = "ai-quant-terminal"
+version = "0.1.0"
+description = "Quant engine and MCP server for the AI Quant Terminal (one deployable unit, two packages)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.14",
+    "yfinance>=0.2.50",
+    "psycopg[binary]>=3.2",
+    "httpx>=0.27",
+    "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["services"]
+
+[tool.pytest.ini_options]
+testpaths = ["services", "tests"]
+python_files = ["test_*.py"]
+addopts = "-q --strict-markers"
+markers = [
+    "network: test performs a real network call to an external provider (yfinance/Gemini); deselect with -m 'not network'",
+    "database: test requires a reachable PostgreSQL instance; deselect with -m 'not database'",
+]
+filterwarnings = ["error::DeprecationWarning:services.*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["apps/web", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "RET", "ARG"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = ["ARG001", "ARG002"]
