@@ -283,6 +283,14 @@ class Strategy(ABC):
     description: ClassVar[str] = ""
     parameter_specs: ClassVar[tuple[ParameterSpec, ...]] = ()
 
+    #: Whether the engine should re-size an already-correct position on every
+    #: bar. False for signal-driven strategies: once positioned as intended,
+    #: re-sizing because equity or conviction drifted pays a full round trip in
+    #: costs for no change of view. A strategy that genuinely targets a
+    #: continuously varying exposure (a volatility-targeted or hedged-ratio
+    #: strategy) sets this to True.
+    rebalances_continuously: ClassVar[bool] = False
+
     #: Fraction of equity committed to a full-conviction position by the default
     #: sizing rule. 0.95 rather than 1.0 leaves headroom for costs, so an order
     #: sized at the previous close does not get rejected for insufficient cash

@@ -106,12 +106,16 @@ class MACDStrategy(Strategy):
 
         frame["direction"] = target.astype("int64")
 
-        # Conviction scales with how far the histogram has separated, normalised
-        # by its own recent dispersion so the scale is comparable across
-        # instruments priced in the hundreds and in the tens of thousands.
-        dispersion = histogram.abs().expanding(min_periods=2).mean()
-        strength = (histogram.abs() / dispersion).clip(upper=1.0).fillna(0.0)
-        frame["strength"] = np.where(frame["direction"] != 0, strength, 0.0)
+        # A crossover is a binary event, so conviction is binary: full while
+        # positioned, zero while flat.
+        #
+        # Grading conviction by the histogram's magnitude was tried and is
+        # wrong: at the moment of a crossover the histogram is by construction
+        # near zero, so every entry would be sized at almost nothing and the
+        # strategy would sit at ~10% exposure while claiming to be long. If a
+        # graded signal is wanted it has to come from something that is *large*
+        # at the entry, not from the quantity whose sign change defined it.
+        frame["strength"] = np.where(frame["direction"] != 0, 1.0, 0.0)
 
         reasons = pd.Series("", index=frame.index, dtype="object")
         reasons[crossed_up] = "MACD crossed above its signal line"
