@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/backtest"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/experiment"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
 )
 
@@ -17,10 +18,11 @@ var Version = "dev"
 // collaborators explicitly rather than reaching for globals, which keeps them
 // testable and keeps business logic out of the HTTP layer.
 type RouterDeps struct {
-	Logger    *slog.Logger
-	Health    *HealthRegistry
-	Backtests *backtest.Service
-	Quant     *quant.Client
+	Logger      *slog.Logger
+	Health      *HealthRegistry
+	Backtests   *backtest.Service
+	Experiments *experiment.Service
+	Quant       *quant.Client
 }
 
 // NewRouter builds the API's HTTP surface. Routes are registered here only;
@@ -35,6 +37,15 @@ func NewRouter(deps RouterDeps) http.Handler {
 		mux.HandleFunc("POST /api/backtests", handlers.Create)
 		mux.HandleFunc("GET /api/backtests", handlers.List)
 		mux.HandleFunc("GET /api/backtests/{id}", handlers.Get)
+	}
+
+	if deps.Experiments != nil {
+		handlers := ExperimentHandlers{Service: deps.Experiments, Logger: deps.Logger}
+		mux.HandleFunc("POST /api/experiments", handlers.Create)
+		mux.HandleFunc("GET /api/experiments", handlers.List)
+		mux.HandleFunc("GET /api/experiments/{id}", handlers.Get)
+		mux.HandleFunc("DELETE /api/experiments/{id}", handlers.Delete)
+		mux.HandleFunc("POST /api/experiments/{id}/rerun", handlers.Rerun)
 	}
 
 	if deps.Quant != nil {

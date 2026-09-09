@@ -19,6 +19,7 @@ import (
 
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/backtest"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/config"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/experiment"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/httpapi"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/logging"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
@@ -110,15 +111,19 @@ func run() error {
 	quantClient := quant.New(cfg.QuantMCPURL, cfg.QuantMCPTimeout, log)
 	health.Register("quant_mcp", quantClient.HealthCheck)
 
-	backtests := backtest.NewService(quantClient, backtest.NewMemoryStore(200))
+	backtestStore := backtest.NewMemoryStore(200)
+	backtests := backtest.NewService(quantClient, backtestStore)
+	experiments := experiment.NewService(
+		postgres.NewExperimentRepository(pool), quantClient, backtestStore)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", cfg.Port),
 		Handler: httpapi.NewRouter(httpapi.RouterDeps{
-			Logger:    log,
-			Health:    health,
-			Backtests: backtests,
-			Quant:     quantClient,
+			Logger:      log,
+			Health:      health,
+			Backtests:   backtests,
+			Experiments: experiments,
+			Quant:       quantClient,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      cfg.RequestTimeout + 10*time.Second,
