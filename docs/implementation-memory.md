@@ -178,3 +178,49 @@ attached; `GET /api/backtests/{id}` round-trips it. Error paths verified:
 unknown symbol → 400 listing the known symbols, too-short range → 400 naming
 the warm-up requirement, unknown JSON field → 400 naming the field (a typo'd
 `commision_bps` must not silently apply the default cost model).
+
+## M3 — strategy framework and experiments
+
+### 2026-09-10 — Strategy results are plausible and mutually distinct (M3.1/M3.2)
+
+RELIANCE.NS 2020-2024, buy-and-hold +79.26%:
+
+| strategy | trades | win rate | profit factor | return | exposure |
+|---|---|---|---|---|---|
+| macd | 48 | 33.3% | 1.16 | +29.2% | 47.1% |
+| bollinger | 23 | 65.2% | 1.25 | +11.9% | 21.1% |
+| dual_thrust | 65 | 36.9% | 0.94 | +1.5% | 43.3% |
+
+These have the right *shapes*: mean reversion wins often and small, breakout
+wins rarely and loses money after costs on a trending large cap, momentum sits
+between. All three underperforming buy-and-hold on a strong uptrend is expected,
+not a bug. Treat a strategy whose profile does not match its family as a signal
+to look for an implementation error.
+
+### 2026-09-10 — Dual Thrust range must exclude the current bar (M3.2)
+
+The volatility range is computed over `lookback` bars **shifted by one**.
+Including the current bar's own high/low in the range that sets its own trigger
+is look-ahead. `warmup_bars = lookback + 1` pays for the shift. A test
+hand-computes both readings (causal 5 vs same-bar-inclusive 200) so the shift is
+proven load-bearing.
+
+### 2026-09-10 — Undefined indicator values must be NaN, never a plausible default
+
+Two independent cases so far: Bollinger `percent_b` on a zero-width band (0/0 —
+NaN, not 0.5) and the rolling z-score on a zero-variance window. A fabricated
+midpoint tells a strategy the price is exactly centred when the statistic does
+not exist. Same rule as metrics returning None rather than 0.0 or inf.
+
+### 2026-09-10 — Reproducibility reports three verdicts, not one (M3.5)
+
+`POST /api/experiments/{id}/rerun` returns `data_version_matches`,
+`metrics_match` and a list of the metrics that moved — because "the provider
+revised history" and "our code regressed" need opposite responses. Comparison
+uses a 1e-9 tolerance (the result round-trips through JSON and PostgreSQL, so
+bit-for-bit equality is not guaranteed) which is far tighter than any real
+regression.
+
+Verified end to end: a saved 2022-2024 RELIANCE.NS MACD experiment reruns with
+`reproducible: true` and zero differences against the live provider and the real
+database.
