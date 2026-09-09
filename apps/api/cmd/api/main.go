@@ -18,6 +18,7 @@ import (
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/config"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/httpapi"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/logging"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/storage/postgres"
 )
 
 func main() {
@@ -44,11 +45,29 @@ func run() error {
 		"quant_mcp_url", cfg.QuantMCPURL,
 	)
 
+	startupCtx, cancelStartup := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancelStartup()
+
+	// Compose starts `api` and `db` together, so a short reachability wait is
+	// normal rather than a failure. Past that window a missing database is a
+	// fatal startup error, not something to discover on the first request.
+	pool, err := postgres.Connect(startupCtx, cfg.DatabaseURL, 30*time.Second)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	state, err := postgres.AssertMigrationsApplied(startupCtx, pool)
+	if err != nil {
+		return err
+	}
+	log.Info("database ready", "schema_version", state.Version)
+
 	health := httpapi.NewHealthRegistry()
-	// Dependency probes are registered as their clients are wired in
-	// (database at M1.5, quant-mcp at M2.10). Until then /healthz honestly
-	// reports only that the process itself is serving.
+	// Probes are registered as their clients are wired in (quant-mcp at
+	// M2.10). Until then /healthz reports only what it has actually verified.
 	health.Register("process", func(context.Context) error { return nil })
+	health.Register("database", postgres.HealthCheck(pool))
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),

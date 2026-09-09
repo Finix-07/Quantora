@@ -1,0 +1,60 @@
+# AI Quant Terminal — local stack.
+#
+# Single-user, fully local deployment (deployment.md §1/§2). Bring it up from
+# the repository root:
+#
+#     docker compose -f infra/compose/docker-compose.yml up --build
+#
+# or simply `make up`, which passes the file and the repo-root .env for you.
+
+name: ai-quant-terminal
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: aiqt-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-quant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quant_local_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-quant}
+    ports:
+      # Exposed on the host so `make migrate`, psql and Go repository tests can
+      # reach it directly. Nothing here is internet-facing (deployment.md §8).
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quant} -d ${POSTGRES_DB:-quant}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # golang-migrate as a one-shot tool container, so no host CLI install is
+  # required. It never runs automatically: migrations are triggered explicitly
+  # via `make migrate` (implementation-plan M1.5). A migration that fails
+  # inside a service's startup surfaces as an opaque crash loop; run explicitly,
+  # the failure is readable.
+  migrate:
+    image: migrate/migrate:v4.18.1
+    container_name: aiqt-migrate
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../../db/migrations:/migrations:ro
+    entrypoint:
+      [
+        "migrate",
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${POSTGRES_USER:-quant}:${POSTGRES_PASSWORD:-quant_local_dev_password}@db:5432/${POSTGRES_DB:-quant}?sslmode=disable",
+      ]
+    command: ["up"]
+
+volumes:
+  db_data:
