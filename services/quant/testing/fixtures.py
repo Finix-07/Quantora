@@ -51,8 +51,13 @@ def make_ohlcv_frame(
     index.name = TIMESTAMP_INDEX_NAME
 
     opens = np.empty(n, dtype="float64")
-    opens[0] = closes[0]
-    opens[1:] = closes[:-1]  # open at the previous close: a continuous path
+    if n:
+        # Open at the previous close, giving a continuous path. Guarded because
+        # an empty series is a legitimate fixture (a date range with no trading
+        # sessions), and indexing closes[0] would crash before the frame could
+        # be built.
+        opens[0] = closes[0]
+        opens[1:] = closes[:-1]
 
     highs = np.maximum(opens, closes) * (1.0 + spread)
     lows = np.minimum(opens, closes) * (1.0 - spread)
