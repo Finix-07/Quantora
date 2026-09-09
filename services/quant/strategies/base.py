@@ -257,10 +257,27 @@ class ParameterSpec:
                 value = float(value)
             elif self.type == "bool":
                 value = bool(value)
+            elif self.type == "str":
+                # Not str(value): coercing would silently accept a number or a
+                # dict and turn it into a plausible-looking string. A parameter
+                # naming an instrument has to be rejected when it is not one,
+                # or the saved experiment records something that was never used.
+                if not isinstance(value, str):
+                    raise ValueError
+                value = value.strip()
+                if not value:
+                    raise ValueError
         except (TypeError, ValueError):
             raise InvalidParametersError(
-                f"{self.name} must be a {self.type}, got {value!r}"
+                f"{self.name} must be a non-empty {self.type}, got {value!r}"
+                if self.type == "str"
+                else f"{self.name} must be a {self.type}, got {value!r}"
             ) from None
+
+        # Numeric bounds do not apply to strings; comparing a str against a
+        # number raises TypeError rather than reporting a useful message.
+        if isinstance(value, str):
+            return value
 
         if self.minimum is not None and value < self.minimum:
             raise InvalidParametersError(f"{self.name} must be >= {self.minimum}, got {value}")

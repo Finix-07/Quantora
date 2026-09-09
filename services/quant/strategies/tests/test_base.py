@@ -301,3 +301,46 @@ def test_empty_signal_frame_has_the_contract_dtypes() -> None:
     assert frame["direction"].dtype == "int64"
     assert frame["strength"].dtype == "float64"
     assert (frame["direction"] == int(SignalDirection.FLAT)).all()
+
+
+class TestStringParameters:
+    """`str` specs were unchecked until a strategy needed one (pair_symbol).
+
+    An unvalidated string parameter is not harmless here: `pair_symbol` names
+    the instrument whose bars the strategy will be given, and it is persisted
+    with the experiment. Accepting a non-string would record a configuration
+    that could never be reproduced.
+    """
+
+    def test_non_string_is_rejected_rather_than_coerced(self) -> None:
+        # str(5) would be a plausible-looking "5" that names no instrument.
+        # Uses a choice-free spec, because a spec WITH choices rejects the value
+        # on the choices check first and would not exercise the type branch.
+        spec = ParameterSpec("pair_symbol", "str", "TCS.NS", "The second leg")
+
+        for bad in (5, 5.0, ["TCS.NS"], None):
+            with pytest.raises(InvalidParametersError, match="must be a non-empty str"):
+                spec.validate(bad)
+
+    def test_empty_and_whitespace_only_values_are_rejected(self) -> None:
+        spec = ParameterSpec("pair_symbol", "str", "TCS.NS", "The second leg")
+
+        for bad in ("", "   "):
+            with pytest.raises(InvalidParametersError, match="must be a non-empty str"):
+                spec.validate(bad)
+
+    def test_surrounding_whitespace_is_trimmed(self) -> None:
+        spec = ParameterSpec("pair_symbol", "str", "TCS.NS", "The second leg")
+
+        assert spec.validate("  TCS.NS  ") == "TCS.NS"
+
+    def test_choices_are_still_enforced(self) -> None:
+        with pytest.raises(InvalidParametersError, match="must be one of"):
+            DummyStrategy(mode="z")
+
+    def test_numeric_bounds_are_not_applied_to_strings(self) -> None:
+        # Comparing a str against a number raises TypeError with no useful
+        # message; a spec that carries bounds it cannot apply must not crash.
+        spec = ParameterSpec("label", "str", "abc", "A label", minimum=0, maximum=10)
+
+        assert spec.validate("abc") == "abc"

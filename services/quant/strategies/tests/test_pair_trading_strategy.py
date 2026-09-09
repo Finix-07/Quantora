@@ -102,7 +102,9 @@ class TestParameters:
             PairTradingStrategy(entry_z=1.0, exit_z=2.5)
 
     def test_rejects_an_empty_pair_symbol(self) -> None:
-        with pytest.raises(InvalidParametersError, match="non-empty symbol"):
+        # The contract's own str validation now rejects this before the
+        # strategy-local guard is reached; the message names the parameter.
+        with pytest.raises(InvalidParametersError, match="pair_symbol must be a non-empty str"):
             PairTradingStrategy(pair_symbol="  ")
 
     def test_warmup_covers_the_spread_window_and_one_return(self) -> None:
