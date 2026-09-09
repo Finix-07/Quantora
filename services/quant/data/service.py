@@ -27,6 +27,7 @@ from services.quant.data.types import (
     Provenance,
 )
 from services.quant.data.universe import get_instrument, get_universe
+from services.quant.data.validation import DataQualityReport, validate_prices
 
 log = logging.getLogger(__name__)
 
@@ -35,13 +36,10 @@ __all__ = ["MarketDataResult", "get_prices", "get_universe"]
 
 @dataclass(frozen=True, slots=True)
 class MarketDataResult:
-    """Retrieved bars plus everything needed to judge whether to trust them.
-
-    The validation gate that fills the `quality` field lands in M2.2; until then
-    this type carries retrieval and provenance only.
-    """
+    """Validated bars plus everything needed to judge whether to trust them."""
 
     series: PriceSeries
+    quality: DataQualityReport
 
     @property
     def data_version(self) -> str:
@@ -53,6 +51,7 @@ class MarketDataResult:
             "interval": self.series.interval,
             "data_version": self.data_version,
             "provenance": self.series.provenance.as_dict(),
+            "quality": self.quality.as_dict(),
             "bars": self.series.to_records(),
         }
 
@@ -153,6 +152,8 @@ def get_prices(
             "split_and_dividend_adjusted."
         )
 
+    quality = validate_prices(frame, symbol=symbol, interval=interval)
+
     provenance = Provenance(
         provider=active_provider.name,
         symbol=instrument.symbol,
@@ -180,7 +181,8 @@ def get_prices(
             "interval": interval,
             "rows": len(frame),
             "data_version": series.data_version(),
+            "quality": quality.severity,
         },
     )
 
-    return MarketDataResult(series=series)
+    return MarketDataResult(series=series, quality=quality)

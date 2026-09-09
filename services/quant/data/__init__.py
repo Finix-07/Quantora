@@ -29,13 +29,21 @@ from services.quant.data.universe import (
     get_instrument,
     get_universe,
 )
+from services.quant.data.validation import (
+    DataQualityReport,
+    Gap,
+    detect_gaps,
+    validate_prices,
+)
 
 __all__ = [
     "INSTRUMENTS",
     "OHLCV_COLUMNS",
     "SUPPORTED_INTERVALS",
     "DataError",
+    "DataQualityReport",
     "DataValidationError",
+    "Gap",
     "Instrument",
     "InvalidRequestError",
     "MarketDataResult",
@@ -48,8 +56,10 @@ __all__ = [
     "Violation",
     "YFinanceProvider",
     "all_instruments",
+    "detect_gaps",
     "get_instrument",
     "get_prices",
     "get_universe",
     "normalize_frame",
+    "validate_prices",
 ]
