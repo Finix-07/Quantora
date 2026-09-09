@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from services.quant.backtest.config import BacktestConfig, ExecutionModel
 from services.quant.backtest.costs import CostModel
 from services.quant.backtest.result import build_result
-from services.quant.backtest.runner import run_backtest
+from services.quant.backtest.runner import run_backtest_for_symbol
 from services.quant.data.errors import (
     DataError,
     DataValidationError,
@@ -31,7 +31,7 @@ from services.quant.strategies.base import (
     InvalidParametersError,
     StrategyError,
 )
-from services.quant.strategies.registry import UnknownStrategyError, create, describe_all
+from services.quant.strategies.registry import UnknownStrategyError, describe_all
 from services.quant.webapi.errors import ErrorCode, ServiceError
 from services.quant.webapi.schemas import BacktestRequest, CostModelPayload
 
@@ -121,10 +121,17 @@ def market_data(symbol: str, start: str, end: str, interval: str = "1d") -> JSON
 def run_backtest_endpoint(payload: BacktestRequest) -> JSONResponse:
     """Run one backtest and return the full result contract."""
     try:
-        data = get_prices(payload.symbol, payload.start, payload.end, payload.interval)
-        strategy = create(payload.strategy, payload.parameters)
-        run = run_backtest(
-            data.series, strategy, _config(payload), data_quality=data.quality.as_dict()
+        # One entry point for every caller — this route, the MCP layer (M6) and
+        # compare_strategies. It also resolves any second instrument a strategy
+        # declares, so pair trading runs here exactly like the other three.
+        run = run_backtest_for_symbol(
+            payload.symbol,
+            payload.strategy,
+            payload.start,
+            payload.end,
+            parameters=payload.parameters,
+            interval=payload.interval,
+            config=_config(payload),
         )
     except Exception as exc:
         raise _service_error(exc) from exc

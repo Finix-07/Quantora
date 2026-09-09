@@ -240,6 +240,14 @@ class PairTradingStrategy(Strategy):
             )
         self._pair_series = series
 
+    def auxiliary_symbols(self) -> tuple[str, ...]:
+        """The second leg, so the runner can fetch and inject it generically."""
+        return (str(self._parameters["pair_symbol"]),)
+
+    def attach_auxiliary_series(self, series: PriceSeries) -> None:
+        """Contract-level alias for :meth:`set_pair_series`."""
+        self.set_pair_series(series)
+
     @property
     def warmup_bars(self) -> int:
         # `lookback` bars to form the spread's mean and dispersion, plus one for

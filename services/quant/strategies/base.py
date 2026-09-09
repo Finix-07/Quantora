@@ -387,6 +387,30 @@ class Strategy(ABC):
         """
         return ExitDecision.hold()
 
+    def auxiliary_symbols(self) -> tuple[str, ...]:
+        """Instruments this strategy needs *beyond* the primary series.
+
+        Almost every strategy reads one instrument and returns (). Pair trading
+        reads two. Declaring the extra symbols here — rather than having the
+        strategy fetch them — keeps `generate_signals` a pure function of the
+        data it was handed, and gives the runner a single generic place to
+        resolve them. Without it, "run any registered strategy by name" would
+        work for three of the four families and fail for the fourth.
+        """
+        return ()
+
+    def attach_auxiliary_series(self, series: PriceSeries) -> None:
+        """Supply one of the instruments named by :meth:`auxiliary_symbols`.
+
+        Raises by default: a strategy that declares no auxiliary symbols has
+        nowhere to put one, and silently discarding it would let a caller
+        believe data was used that never was.
+        """
+        raise NotImplementedError(
+            f"{self.name} does not take auxiliary series (auxiliary_symbols() is empty), "
+            f"but one for {series.symbol!r} was supplied."
+        )
+
     def describe(self) -> dict[str, Any]:
         """Self-description for the API, the Strategy Lab and the MCP layer."""
         return {
@@ -396,6 +420,9 @@ class Strategy(ABC):
             "parameters": self.parameters,
             "parameter_specs": [spec.as_dict() for spec in self.parameter_specs],
             "warmup_bars": self.warmup_bars,
+            # The UI and the AI layer need to know a strategy requires a second
+            # instrument before they can offer it as a runnable option.
+            "auxiliary_symbols": list(self.auxiliary_symbols()),
         }
 
     def __repr__(self) -> str:
