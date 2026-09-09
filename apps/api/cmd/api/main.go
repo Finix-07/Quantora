@@ -8,10 +8,12 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -21,7 +23,19 @@ import (
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/storage/postgres"
 )
 
+// healthcheckFlag lets the container's healthcheck probe /healthz by
+// re-executing this same binary. The runtime image is distroless, so there is
+// no curl or wget to call — and adding a shell to the image purely for health
+// probing would be a worse trade than a 20-line self-probe.
+var healthcheckFlag = flag.Bool("healthcheck", false, "probe this service's own /healthz and exit 0 (healthy) or 1")
+
 func main() {
+	flag.Parse()
+
+	if *healthcheckFlag {
+		os.Exit(selfHealthcheck())
+	}
+
 	if err := run(); err != nil {
 		// Configuration and startup failures are fatal and loud: a service
 		// that starts with a broken DSN and only fails on the first real
@@ -30,6 +44,28 @@ func main() {
 		fmt.Fprintf(os.Stderr, "api: fatal: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// selfHealthcheck performs the probe described on healthcheckFlag.
+func selfHealthcheck() int {
+	port := 8080
+	if raw := os.Getenv("API_PORT"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			port = n
+		}
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/healthz", port))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "healthcheck: %v\n", err)
+		return 1
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "healthcheck: /healthz returned %d\n", resp.StatusCode)
+		return 1
+	}
+	return 0
 }
 
 func run() error {

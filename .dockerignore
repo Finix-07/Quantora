@@ -1,0 +1,18 @@
+# Keep build contexts small and secrets out of images.
+.git
+.env
+.env.local
+.venv
+node_modules
+**/node_modules
+apps/web/.next
+apps/web/out
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+services/execution-cpp/build
+notebooks
+.sdlc
+docs
+tests/end_to_end/playwright-report
+tests/end_to_end/test-results

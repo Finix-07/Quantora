@@ -3,9 +3,13 @@
 # Single-user, fully local deployment (deployment.md §1/§2). Bring it up from
 # the repository root:
 #
-#     docker compose -f infra/compose/docker-compose.yml up --build
+#     make up                        # web, api, quant-mcp, db
+#     make up-llm                    # ... plus the optional local Ollama runtime
+#     make migrate                   # apply database migrations (explicit)
 #
-# or simply `make up`, which passes the file and the repo-root .env for you.
+# `docker compose up` deliberately never starts `ollama`: Gemini is the default
+# provider and Ollama is an opt-in fallback behind the `local-llm` profile
+# (deployment.md §2, amended 2026-09-09).
 
 name: ai-quant-terminal
 
@@ -31,6 +35,120 @@ services:
       timeout: 3s
       retries: 20
       start_period: 10s
+
+  quant-mcp:
+    build:
+      context: ../..
+      dockerfile: infra/docker/quant-mcp.Dockerfile
+    container_name: aiqt-quant-mcp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://quant:quant_local_dev_password@db:5432/quant?sslmode=disable}
+      QUANT_MCP_PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.6-flash}
+      OLLAMA_URL: ${OLLAMA_URL:-http://ollama:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
+    ports:
+      - "${QUANT_MCP_PORT:-8000}:8000"
+    healthcheck:
+      # The python:slim image has no curl; urllib is already present. Exit
+      # status follows the endpoint's own 200/503 verdict.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3).status==200 else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api.Dockerfile
+      args:
+        VERSION: ${API_VERSION:-dev}
+    container_name: aiqt-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      quant-mcp:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://quant:quant_local_dev_password@db:5432/quant?sslmode=disable}
+      QUANT_MCP_URL: ${QUANT_MCP_URL:-http://quant-mcp:8000}
+      API_PORT: 8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    healthcheck:
+      # Distroless runtime: no shell, no curl. The binary probes itself.
+      test: ["CMD", "/app/api", "-healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        # NEXT_PUBLIC_* is inlined at build time, and the browser — not the
+        # Compose network — is what resolves this URL, so it points at the
+        # host-published API port rather than at the `api` service name.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    container_name: aiqt-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  # Optional local LLM runtime. Started only by `make up-llm` /
+  # `docker compose --profile local-llm up`; a plain `up` must never start it
+  # (deployment.md §2). Switch providers with LLM_PROVIDER=ollama in .env.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aiqt-ollama
+    profiles: ["local-llm"]
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # golang-migrate as a one-shot tool container, so no host CLI install is
   # required. It never runs automatically: migrations are triggered explicitly
@@ -58,3 +176,4 @@ services:
 
 volumes:
   db_data:
+  ollama_models:

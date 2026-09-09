@@ -70,3 +70,31 @@ recorded the same way, with "What failed" left as `n/a`.
 - **Known-good commands:** `make up` → `make migrate` → migrate prints
   `1/u baseline`. Docker Desktop must be running first (`open -a Docker`);
   otherwise Compose fails with "Cannot connect to the Docker daemon".
+
+### 2026-09-10 — Next.js standalone output needs the monorepo layout inside the image (M1.6)
+
+- **Problem:** the `web` container crash-looped with
+  `Error: Cannot find module '/app/apps/web/server.js'`.
+- **Root cause:** `output: "standalone"` writes its file tree relative to
+  `outputFileTracingRoot`, which `next.config.ts` resolves to the repo root
+  (`../../` from `apps/web`). The first Dockerfile flattened `apps/web/` to the
+  image root `/app`, so `../../` resolved to `/` and Next emitted
+  `.next/standalone/app/server.js` — not the path the CMD used.
+- **Fix:** reproduce the monorepo layout inside the image: `WORKDIR /repo`,
+  `COPY apps/web/ ./apps/web/`, build from `/repo/apps/web`, then copy
+  `.next/standalone` to `/repo` and run `node apps/web/server.js`.
+- **Why it works:** the tracing root inside the image now matches the tracing
+  root the config computes, so emitted paths and the CMD agree.
+- **Also note:** `.next/static` and `public/` are *not* traced into standalone
+  and must be copied separately, or the page renders unstyled.
+- **Verified:** `aiqt-web` reports `Up (healthy)`, `/healthz` returns
+  `{"status":"ok","service":"web"}`, `GET /` returns 200.
+
+### 2026-09-10 — Health probes without curl (M1.6)
+
+- Neither runtime image has curl: `api` is distroless (no shell at all) and
+  `quant-mcp` is `python:3.13-slim`.
+- **What works:** `api` probes itself via a `-healthcheck` flag on the same
+  binary; `quant-mcp` uses `python -c` with `urllib.request`; `web` uses
+  `node -e` with `fetch`. Adding a shell or curl to an image purely for health
+  probing was rejected as the worse trade.
