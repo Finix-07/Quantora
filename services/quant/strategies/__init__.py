@@ -19,7 +19,10 @@ from services.quant.strategies.base import (
     StrategyError,
     empty_signal_frame,
 )
+from services.quant.strategies.bollinger import BollingerStrategy
+from services.quant.strategies.dual_thrust import DualThrustStrategy
 from services.quant.strategies.macd import MACDStrategy
+from services.quant.strategies.pair_trading import PairTradingStrategy
 from services.quant.strategies.registry import (
     UnknownStrategyError,
     available,
@@ -31,11 +34,14 @@ from services.quant.strategies.registry import (
 
 __all__ = [
     "SIGNAL_COLUMNS",
+    "BollingerStrategy",
+    "DualThrustStrategy",
     "ExitContext",
     "ExitDecision",
     "InsufficientDataError",
     "InvalidParametersError",
     "MACDStrategy",
+    "PairTradingStrategy",
     "ParameterSpec",
     "Position",
     "SignalDirection",
