@@ -19,6 +19,7 @@ from services.quant.strategies.base import (
     StrategyError,
     empty_signal_frame,
 )
+from services.quant.strategies.macd import MACDStrategy
 from services.quant.strategies.registry import (
     UnknownStrategyError,
     available,
@@ -34,6 +35,7 @@ __all__ = [
     "ExitDecision",
     "InsufficientDataError",
     "InvalidParametersError",
+    "MACDStrategy",
     "ParameterSpec",
     "Position",
     "SignalDirection",
