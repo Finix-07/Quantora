@@ -278,3 +278,78 @@ database.
 - Also: containers from a previous Compose project name keep holding the host
   ports. Stop them explicitly with
   `docker compose -p <old-name> ... down` before bringing up the renamed stack.
+
+## M4 — C++ execution engine
+
+### 2026-09-11 — The parity surface had to be carved out first (M4.4)
+
+- `simulate()` mixed two concerns: deciding a per-bar **target position** (calls
+  the strategy, needs indicators, stays in Python) and **executing** that target
+  (a closed numeric problem — costs, cash constraint, portfolio accounting).
+- `engine.py` was split along that seam: `simulate()` supplies the decision half
+  from a strategy, `simulate_targets()` from a pre-computed array, and both drive
+  the *same* execution loop. Without that split, parity would have compared two
+  different problems.
+- The refactor's behaviour-preservation was **checked, not asserted**: the golden
+  fixtures and the look-ahead suite predate it and both stayed green.
+
+### 2026-09-11 — pybind11 was never declared (M4.6)
+
+- **Problem:** the Docker build failed with `ModuleNotFoundError: No module
+  named 'pybind11'`. It existed only in the local `.venv`, installed ad hoc.
+- **Fix:** a `build` extra in `pyproject.toml` (build-time only, never imported
+  at runtime), installed by the Docker builder stage via `pip install ".[build]"`.
+- **Lesson:** a dependency that works because it happens to be in your venv is
+  not a declared dependency. The container is the check.
+
+### 2026-09-11 — Measured C++ speedup: 3.5-3.9x, and what it means
+
+| Bars | Python | C++ | Speedup |
+|---:|---:|---:|---:|
+| 10,000 | 207 ms | 54 ms | 3.9x |
+| 100,000 | 2,167 ms | 559 ms | 3.9x |
+| 1,000,000 | 22,325 ms | 6,423 ms | 3.5x |
+
+A realistic daily single-instrument backtest is a few thousand bars, where both
+finish well under a second. The C++ path earns its place on sweeps, Monte Carlo
+and minute data — **not** on the backtests the product runs today. Python remains
+the default and the reference implementation. Full report:
+`docs/research/cpp-benchmark.md`.
+
+### 2026-09-11 — The C++ path must never silently fall back to Python
+
+`cpp_engine.is_available()` returns False with a reason and every entry point
+raises rather than degrading to Python. A silent fallback would make the parity
+test and the benchmark measure the same code twice while claiming otherwise —
+the one failure mode that invalidates every number M4 produces. The CI job
+asserts the extension is importable *before* running parity, because the parity
+test skips silently without it.
+
+## M5 — portfolio & risk engine
+
+### 2026-09-11 — Correlation and beta on returns, never price levels
+
+Two trending price series correlate near ±1 by construction. A level-based beta
+reports a confident number that measures the trend rather than the relationship.
+Same spurious-regression trap the pair-trading guardrail avoids — this is now the
+third place in the codebase it has come up.
+
+### 2026-09-11 — Static weights are an assumption, so they are stated
+
+Portfolio risk holds weights constant at their as-of-date values across the
+return series. The alternative — silently modelling rebalancing the user never
+performed — describes a portfolio they do not hold. It appears in the response's
+`assumptions` list.
+
+### 2026-09-11 — A scenario report projects its BEFORE state
+
+The report list's metric columns come from the "before" side, so every row is the
+portfolio as it actually stood and rows compare like with like. The reweighting
+lives inside the payload. A test gives before and after different values so the
+projection has to pick the right one rather than happening to.
+
+### 2026-09-11 — Sanity check that caught nothing but would have
+
+A three-large-cap NSE portfolio measured against NIFTY reports beta 0.969. A beta
+far from 1 there would have meant the calculation was wrong, not that the
+portfolio was unusual. Keep a check like this for every new metric.
