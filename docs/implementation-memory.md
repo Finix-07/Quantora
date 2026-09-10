@@ -243,3 +243,38 @@ database.
 - **To discard it:** `docker volume rm ai-quant-terminal_db_data`.
 - **Lesson:** treat the Compose `name:` as part of the persistence contract, not
   as a label.
+
+### 2026-09-11 — Golden fixtures must be proven load-bearing (M3.8)
+
+- A golden test that never fails is indistinguishable from no test. After
+  writing `tests/golden/`, the fixtures were verified by **deliberately
+  breaking the code**: changing the spread charged per side from half to a third
+  failed 12 tests across all four families with named metric drifts; reverting
+  restored green.
+- A first attempt at a perturbation (nudging the MACD crossover threshold by
+  1e-4) changed no signal and correctly failed nothing — which is itself useful:
+  the suite does not fire on noise.
+- **Do this whenever a regression fixture is added.** Confirm it fails for the
+  right reason before trusting it.
+
+### 2026-09-11 — Golden bars are committed, never fetched (M3.8)
+
+- `tests/golden/data/*.csv` holds 992 pinned bars each for RELIANCE.NS and
+  TCS.NS (2020-2023), ~296KB total, written at `%.17g` so the CSV round-trips to
+  the identical `data_version` — asserted by a test, because a fixture whose own
+  hash drifts makes every expectation below it untrustworthy.
+- Regeneration is `python scripts/generate_golden_fixtures.py`, deliberately a
+  separate command. A generator wired into the test run would rewrite
+  expectations to match whatever the code now produces.
+
+### 2026-09-11 — Docker content-lease faults after a daemon restart
+
+- After restarting Docker Desktop, `make up` failed twice with
+  `failed to resolve source metadata ... unable to lease content: lease does not
+  exist: not found` on `golang:1.27-alpine`, then on the quant-mcp pip layer.
+- **Fix:** `docker pull <image>` explicitly, then retry. Both were transient
+  content-store faults, not Dockerfile problems — the same build succeeded
+  unchanged on the next attempt.
+- Also: containers from a previous Compose project name keep holding the host
+  ports. Stop them explicitly with
+  `docker compose -p <old-name> ... down` before bringing up the renamed stack.

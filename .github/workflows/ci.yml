@@ -44,11 +44,18 @@ jobs:
           .venv/bin/python -m ruff format --check services tests
 
       - name: Test
-        # `network`-marked tests hit yfinance/Gemini for real. They are excluded
-        # here because an external provider outage is not a code defect, and CI
-        # must fail only on things the repository can fix. The provider
-        # integration itself stays covered by deterministic fixtures.
-        run: .venv/bin/python -m pytest -m "not network" services tests
+        # Two exclusions, for different reasons:
+        #  * `network` tests hit yfinance/Gemini for real. An external provider
+        #    outage is not a code defect, and CI must fail only on things a
+        #    commit can cause. The provider integration stays covered by
+        #    deterministic fixtures.
+        #  * `integration` tests drive the running Compose stack over HTTP; the
+        #    `compose` job below brings it up and runs them there.
+        #
+        # The golden regression suite (tests/golden) runs here and is NOT
+        # excluded: its bars are committed, so it needs no network and is
+        # exactly the check that catches an unintended change in a result.
+        run: .venv/bin/python -m pytest -m "not network and not integration" services tests
 
   go:
     name: Go — vet + test
@@ -122,6 +129,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
       - name: Prepare environment
         # M1's Definition of Done is that the stack actually comes up, so CI
         # asserts it rather than trusting that the Dockerfiles still build. The
@@ -143,6 +154,15 @@ jobs:
           curl -fsS http://localhost:8080/healthz | tee /dev/stderr | grep -q '"status":"ok"'
           curl -fsS http://localhost:8000/healthz | tee /dev/stderr | grep -q '"status":"ok"'
           curl -fsS http://localhost:3000/healthz | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: Run the cross-boundary integration tests
+        # These exercise the real Go API, quant-mcp and PostgreSQL together
+        # (testing.md §5). They are the only place the boundaries between the
+        # three services are verified rather than mocked.
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install -e ".[dev]"
+          .venv/bin/python -m pytest -m integration tests/integration
 
       - name: Verify the optional LLM runtime was not started
         # deployment.md §2: a plain `docker compose up` must never start ollama.
