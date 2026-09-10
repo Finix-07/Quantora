@@ -55,7 +55,12 @@ class CompareRequest(BaseModel):
     """
 
     symbol: str
-    strategies: list[dict[str, Any]] = Field(min_length=2)
+    # No min_length here on purpose. Pydantic would reject a one-strategy
+    # request with a generic "List should have at least 2 items", whereas the
+    # domain layer says "A comparison needs at least two strategies... Use the
+    # backtest endpoint to run a single strategy" — which tells the user what to
+    # do instead.
+    strategies: list[dict[str, Any]]
     start: str
     end: str
     interval: str = "1d"

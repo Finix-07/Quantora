@@ -11,9 +11,15 @@ import (
 	"testing"
 )
 
+// discardLogger keeps test output readable; the handlers' logging is exercised
+// by their behaviour, not by inspecting the sink.
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewJSONHandler(io.Discard, nil))
+}
+
 func testRouter(reg *HealthRegistry) http.Handler {
 	return NewRouter(RouterDeps{
-		Logger: slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		Logger: discardLogger(),
 		Health: reg,
 	})
 }

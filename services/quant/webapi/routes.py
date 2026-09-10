@@ -13,6 +13,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
+from services.quant.backtest.compare import StrategySpec, compare_strategies
 from services.quant.backtest.config import BacktestConfig, ExecutionModel
 from services.quant.backtest.costs import CostModel
 from services.quant.backtest.result import build_result
@@ -33,7 +34,7 @@ from services.quant.strategies.base import (
 )
 from services.quant.strategies.registry import UnknownStrategyError, describe_all
 from services.quant.webapi.errors import ErrorCode, ServiceError
-from services.quant.webapi.schemas import BacktestRequest, CostModelPayload
+from services.quant.webapi.schemas import BacktestRequest, CompareRequest, CostModelPayload
 
 log = logging.getLogger(__name__)
 
@@ -69,17 +70,51 @@ def _service_error(exc: Exception) -> ServiceError:
     raise exc
 
 
-def _config(payload: BacktestRequest) -> BacktestConfig:
-    costs: CostModelPayload = payload.cost_model
+def _build_config(
+    costs: CostModelPayload,
+    *,
+    initial_cash: float,
+    execution_model: str,
+    allow_short: bool,
+    liquidate_at_end: bool,
+    risk_free_rate: float,
+) -> BacktestConfig:
     return BacktestConfig(
-        initial_cash=payload.initial_cash,
+        initial_cash=initial_cash,
         cost_model=CostModel(
             commission_bps=costs.commission_bps,
             commission_min=costs.commission_min,
             slippage_bps=costs.slippage_bps,
             spread_bps=costs.spread_bps,
         ),
-        execution_model=ExecutionModel(payload.execution_model),
+        execution_model=ExecutionModel(execution_model),
+        allow_short=allow_short,
+        liquidate_at_end=liquidate_at_end,
+        risk_free_rate=risk_free_rate,
+    )
+
+
+def _config(payload: BacktestRequest) -> BacktestConfig:
+    return _build_config(
+        payload.cost_model,
+        initial_cash=payload.initial_cash,
+        execution_model=payload.execution_model,
+        allow_short=payload.allow_short,
+        liquidate_at_end=payload.liquidate_at_end,
+        risk_free_rate=payload.risk_free_rate,
+    )
+
+
+def _compare_config(payload: CompareRequest) -> BacktestConfig:
+    """Every compared strategy runs under one identical configuration.
+
+    Per-strategy costs or execution models would make the table compare two
+    things at once and the user could not attribute a difference to either.
+    """
+    return _build_config(
+        payload.cost_model,
+        initial_cash=payload.initial_cash,
+        execution_model=payload.execution_model,
         allow_short=payload.allow_short,
         liquidate_at_end=payload.liquidate_at_end,
         risk_free_rate=payload.risk_free_rate,
@@ -138,3 +173,41 @@ def run_backtest_endpoint(payload: BacktestRequest) -> JSONResponse:
 
     result = build_result(run, experiment_id=payload.experiment_id)
     return JSONResponse(result.as_dict())
+
+
+@router.post("/strategies/compare", tags=["strategies"])
+def compare_strategies_endpoint(payload: CompareRequest) -> JSONResponse:
+    """Run several strategies over one instrument and window, side by side.
+
+    All strategies share one fetched dataset, so a difference in the table is a
+    difference in the strategies rather than in the data they were given.
+    """
+    specs = [
+        StrategySpec(
+            strategy=str(entry.get("strategy", "")),
+            parameters=dict(entry.get("parameters") or {}),
+            label=entry.get("label"),
+        )
+        for entry in payload.strategies
+    ]
+    missing = [i for i, spec in enumerate(specs) if not spec.strategy]
+    if missing:
+        raise ServiceError(
+            ErrorCode.INVALID_REQUEST,
+            f"Every entry in `strategies` needs a `strategy` name; entries {missing} have none.",
+            status_code=400,
+        )
+
+    try:
+        comparison = compare_strategies(
+            payload.symbol,
+            specs,
+            payload.start,
+            payload.end,
+            interval=payload.interval,
+            config=_compare_config(payload),
+        )
+    except Exception as exc:
+        raise _service_error(exc) from exc
+
+    return JSONResponse(comparison)

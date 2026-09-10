@@ -53,6 +53,9 @@ func NewRouter(deps RouterDeps) http.Handler {
 		mux.HandleFunc("GET /api/universe", market.Universe)
 		mux.HandleFunc("GET /api/strategies", market.Strategies)
 		mux.HandleFunc("GET /api/market/{symbol}", market.Prices)
+
+		compare := CompareHandlers{Client: deps.Quant, Logger: deps.Logger}
+		mux.HandleFunc("POST /api/strategies/compare", compare.Compare)
 	}
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
