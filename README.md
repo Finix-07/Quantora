@@ -84,6 +84,25 @@ Services:
 `docker compose --profile local-llm up` and set `LLM_PROVIDER=ollama` if you
 want a zero-external-dependency setup.
 
+## Using it today
+
+The API is complete through strategy comparison and reproducible experiments;
+the web views land at M8. [`docs/api.md`](docs/api.md) is a verified reference —
+every shape in it was copied from a real response. The shortest useful path:
+
+```bash
+# What can I trade, and with what?
+curl -s localhost:8080/api/universe
+curl -s localhost:8080/api/strategies
+
+# Run a backtest, save it, and reproduce it later
+curl -X POST localhost:8080/api/backtests -H 'Content-Type: application/json' \
+  -d '{"symbol":"RELIANCE.NS","strategy":"macd","start":"2022-01-01","end":"2024-12-31"}'
+curl -X POST localhost:8080/api/experiments -H 'Content-Type: application/json' \
+  -d '{"backtest_id":"bt_…","name":"MACD baseline"}'
+curl -X POST localhost:8080/api/experiments/exp_…/rerun
+```
+
 ## Development
 
 See [`docs/implementation-memory.md`](docs/implementation-memory.md) for the
