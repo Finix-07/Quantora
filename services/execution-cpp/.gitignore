@@ -1,0 +1,2 @@
+# CMake build tree, including the compiled extension the Python wrapper loads.
+build/
