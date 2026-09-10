@@ -1,0 +1,162 @@
+{
+  "backtest_config": {
+    "allow_short": true,
+    "cost_model": {
+      "commission_bps": 3.0,
+      "commission_min": 0.0,
+      "slippage_bps": 5.0,
+      "spread_bps": 2.0
+    },
+    "execution_model": "next_bar_open",
+    "initial_cash": 1000000.0,
+    "liquidate_at_end": true,
+    "risk_free_rate": 0.0
+  },
+  "cost_model": {
+    "commission_bps": 3.0,
+    "commission_min": 0.0,
+    "slippage_bps": 5.0,
+    "spread_bps": 2.0
+  },
+  "data_version": "sha256:dc49f3061114f882df1e99e64ba194f0",
+  "end": "2023-12-31",
+  "equity_curve_head": [
+    {
+      "timestamp": "2020-01-01T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-02T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-03T00:00:00+05:30",
+      "value": 1000000.0
+    }
+  ],
+  "equity_curve_tail": [
+    {
+      "timestamp": "2023-12-27T00:00:00+05:30",
+      "value": 1269414.246437855
+    },
+    {
+      "timestamp": "2023-12-28T00:00:00+05:30",
+      "value": 1269414.246437855
+    },
+    {
+      "timestamp": "2023-12-29T00:00:00+05:30",
+      "value": 1269414.246437855
+    }
+  ],
+  "first_trades": [
+    {
+      "bars_held": 34,
+      "costs": 1869.6133984001276,
+      "direction": "long",
+      "entry_price": 1033.3178218008884,
+      "entry_reason": "spread z -2.01 <= -2: RELIANCE.NS is cheap versus TCS.NS \u2014 long the spread",
+      "entry_timestamp": "2022-02-25T00:00:00+05:30",
+      "exit_price": 1202.726063851161,
+      "exit_reason": "60-bar return correlation with TCS.NS +0.48 is below min_correlation 0.5: the pair has decoupled \u2014 flat",
+      "exit_timestamp": "2022-04-20T00:00:00+05:30",
+      "gross_pnl": 157380.25686470317,
+      "pnl": 155510.64346630304,
+      "quantity": 929.0,
+      "return_pct": 0.16199831025024822,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 4,
+      "costs": 1876.7553073311576,
+      "direction": "short",
+      "entry_price": 1260.6196144511455,
+      "entry_reason": "spread z +2.57 >= +2: RELIANCE.NS is rich versus TCS.NS \u2014 short the spread",
+      "entry_timestamp": "2022-05-04T00:00:00+05:30",
+      "exit_price": 1130.7082080721832,
+      "exit_reason": "60-bar return correlation with TCS.NS +0.47 is below min_correlation 0.5: the pair has decoupled \u2014 flat",
+      "exit_timestamp": "2022-05-10T00:00:00+05:30",
+      "gross_pnl": 113282.74636245512,
+      "pnl": 111405.99105512396,
+      "quantity": 872.0,
+      "return_pct": 0.10134632413257001,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "interval": "1d",
+  "last_trades": [
+    {
+      "bars_held": 34,
+      "costs": 1869.6133984001276,
+      "direction": "long",
+      "entry_price": 1033.3178218008884,
+      "entry_reason": "spread z -2.01 <= -2: RELIANCE.NS is cheap versus TCS.NS \u2014 long the spread",
+      "entry_timestamp": "2022-02-25T00:00:00+05:30",
+      "exit_price": 1202.726063851161,
+      "exit_reason": "60-bar return correlation with TCS.NS +0.48 is below min_correlation 0.5: the pair has decoupled \u2014 flat",
+      "exit_timestamp": "2022-04-20T00:00:00+05:30",
+      "gross_pnl": 157380.25686470317,
+      "pnl": 155510.64346630304,
+      "quantity": 929.0,
+      "return_pct": 0.16199831025024822,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 4,
+      "costs": 1876.7553073311576,
+      "direction": "short",
+      "entry_price": 1260.6196144511455,
+      "entry_reason": "spread z +2.57 >= +2: RELIANCE.NS is rich versus TCS.NS \u2014 short the spread",
+      "entry_timestamp": "2022-05-04T00:00:00+05:30",
+      "exit_price": 1130.7082080721832,
+      "exit_reason": "60-bar return correlation with TCS.NS +0.47 is below min_correlation 0.5: the pair has decoupled \u2014 flat",
+      "exit_timestamp": "2022-05-10T00:00:00+05:30",
+      "gross_pnl": 113282.74636245512,
+      "pnl": 111405.99105512396,
+      "quantity": 872.0,
+      "return_pct": 0.10134632413257001,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "metrics": {
+    "annualized_volatility": 0.05997197476564397,
+    "average_loss": null,
+    "average_win": 133458.3172607135,
+    "cagr": 0.0625396741484423,
+    "calmar": 0.9562348625533229,
+    "cost_drag": 0.0037463687057312854,
+    "exposure": 0.03643866325088058,
+    "final_equity": 1269414.246437855,
+    "losing_trades": 0,
+    "max_drawdown": -0.06540200174405886,
+    "max_drawdown_duration_bars": 21,
+    "profit_factor": null,
+    "sharpe": 1.04121601523695,
+    "sortino": 2.145091273383429,
+    "total_costs": 3746.3687057312854,
+    "total_return": 0.26941424643785505,
+    "trade_count": 2,
+    "turnover": 0.9482504589532063,
+    "unavailable": {
+      "average_loss": "No losing trades.",
+      "profit_factor": "There were no losing trades, so the ratio is unbounded."
+    },
+    "win_rate": 1.0,
+    "winning_trades": 2
+  },
+  "parameters": {
+    "entry_z": 2.0,
+    "exit_z": 0.5,
+    "lookback": 60,
+    "pair_symbol": "TCS.NS"
+  },
+  "signal_summary": {
+    "bars_flat": 954,
+    "bars_long": 34,
+    "bars_short": 4,
+    "signal_changes": 5,
+    "warmup_bars": 61
+  },
+  "start": "2020-01-01",
+  "strategy": "pair_trading",
+  "symbol": "RELIANCE.NS"
+}

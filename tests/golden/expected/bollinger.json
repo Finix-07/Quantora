@@ -1,0 +1,254 @@
+{
+  "backtest_config": {
+    "allow_short": true,
+    "cost_model": {
+      "commission_bps": 3.0,
+      "commission_min": 0.0,
+      "slippage_bps": 5.0,
+      "spread_bps": 2.0
+    },
+    "execution_model": "next_bar_open",
+    "initial_cash": 1000000.0,
+    "liquidate_at_end": true,
+    "risk_free_rate": 0.0
+  },
+  "cost_model": {
+    "commission_bps": 3.0,
+    "commission_min": 0.0,
+    "slippage_bps": 5.0,
+    "spread_bps": 2.0
+  },
+  "data_version": "sha256:dc49f3061114f882df1e99e64ba194f0",
+  "end": "2023-12-31",
+  "equity_curve_head": [
+    {
+      "timestamp": "2020-01-01T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-02T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-03T00:00:00+05:30",
+      "value": 1000000.0
+    }
+  ],
+  "equity_curve_tail": [
+    {
+      "timestamp": "2023-12-27T00:00:00+05:30",
+      "value": 1182998.9444199954
+    },
+    {
+      "timestamp": "2023-12-28T00:00:00+05:30",
+      "value": 1182998.9444199954
+    },
+    {
+      "timestamp": "2023-12-29T00:00:00+05:30",
+      "value": 1182998.9444199954
+    }
+  ],
+  "first_trades": [
+    {
+      "bars_held": 13,
+      "costs": 1720.6656574158806,
+      "direction": "long",
+      "entry_price": 656.7797687496444,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2020-01-29T00:00:00+05:30",
+      "exit_price": 662.6452636703543,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2020-02-17T00:00:00+05:30",
+      "gross_pnl": 8499.102140108675,
+      "pnl": 6778.436482692794,
+      "quantity": 1449.0,
+      "return_pct": 0.007122646307852799,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 21,
+      "costs": 1606.4366961745138,
+      "direction": "long",
+      "entry_price": 603.7802484682524,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2020-03-02T00:00:00+05:30",
+      "exit_price": 499.4315985572917,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2020-04-01T00:00:00+05:30",
+      "gross_pnl": -168836.11555593435,
+      "pnl": -170442.55225210887,
+      "quantity": 1618.0,
+      "return_pct": -0.1744699392093297,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 14,
+      "costs": 1421.5798862755587,
+      "direction": "long",
+      "entry_price": 960.7662014676946,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2020-10-22T00:00:00+05:30",
+      "exit_price": 942.2927877600349,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2020-11-11T00:00:00+05:30",
+      "gross_pnl": -15332.933377357542,
+      "pnl": -16754.5132636331,
+      "quantity": 830.0,
+      "return_pct": -0.021010481559152607,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 8,
+      "costs": 1437.691760312257,
+      "direction": "long",
+      "entry_price": 867.3270480797976,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2021-01-07T00:00:00+05:30",
+      "exit_price": 899.734000035463,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2021-01-19T00:00:00+05:30",
+      "gross_pnl": 29295.884567921592,
+      "pnl": 27858.192807609335,
+      "quantity": 904.0,
+      "return_pct": 0.035530524537883856,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 9,
+      "costs": 1492.7240269247668,
+      "direction": "long",
+      "entry_price": 868.9076790040817,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2021-04-13T00:00:00+05:30",
+      "exit_price": 901.1774430555632,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2021-04-28T00:00:00+05:30",
+      "gross_pnl": 30236.76891623817,
+      "pnl": 28744.0448893134,
+      "quantity": 937.0,
+      "return_pct": 0.03530487321429923,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "interval": "1d",
+  "last_trades": [
+    {
+      "bars_held": 22,
+      "costs": 1935.545659687742,
+      "direction": "long",
+      "entry_price": 1117.7564850019758,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2023-01-13T00:00:00+05:30",
+      "exit_price": 1078.9962738302763,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2023-02-15T00:00:00+05:30",
+      "gross_pnl": -37946.24673709375,
+      "pnl": -39881.79239678149,
+      "quantity": 979.0,
+      "return_pct": -0.03644557264670603,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 13,
+      "costs": 1936.8107244315117,
+      "direction": "long",
+      "entry_price": 1036.6438679931966,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2023-03-14T00:00:00+05:30",
+      "exit_price": 1064.918454546054,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2023-04-03T00:00:00+05:30",
+      "gross_pnl": 28953.176630125847,
+      "pnl": 27016.365905694336,
+      "quantity": 1024.0,
+      "return_pct": 0.025450562767379215,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 10,
+      "costs": 1979.26581264055,
+      "direction": "long",
+      "entry_price": 1212.1430908376894,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2023-08-29T00:00:00+05:30",
+      "exit_price": 1225.9707887953587,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2023-09-12T00:00:00+05:30",
+      "gross_pnl": 12472.583557817632,
+      "pnl": 10493.317745177083,
+      "quantity": 902.0,
+      "return_pct": 0.00959737348612369,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 17,
+      "costs": 1981.6810895737092,
+      "direction": "long",
+      "entry_price": 1174.5486215941216,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2023-09-22T00:00:00+05:30",
+      "exit_price": 1162.8948391293522,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2023-10-18T00:00:00+05:30",
+      "gross_pnl": -10977.863081812768,
+      "pnl": -12959.544171386477,
+      "quantity": 942.0,
+      "return_pct": -0.011712991387511376,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 4,
+      "costs": 1982.643345742275,
+      "direction": "long",
+      "entry_price": 1112.2866696170847,
+      "entry_reason": "close below the lower band \u2014 oversold, entering long",
+      "entry_timestamp": "2023-10-25T00:00:00+05:30",
+      "exit_price": 1149.4402780955938,
+      "exit_reason": "close crossed above the middle band \u2014 exiting long",
+      "exit_timestamp": "2023-10-31T00:00:00+05:30",
+      "gross_pnl": 36187.614658067876,
+      "pnl": 34204.9713123256,
+      "quantity": 974.0,
+      "return_pct": 0.031572832185267775,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "metrics": {
+    "annualized_volatility": 0.18687889466131707,
+    "average_loss": -52532.07993019407,
+    "average_win": 30258.788855412866,
+    "cagr": 0.043660122727206874,
+    "calmar": 0.12932950664408682,
+    "cost_drag": 0.03305441125317449,
+    "exposure": 0.2044653153773538,
+    "final_equity": 1182998.9444199954,
+    "losing_trades": 5,
+    "max_drawdown": -0.3375882570043276,
+    "max_drawdown_duration_bars": 449,
+    "profit_factor": 1.6128165667100975,
+    "sharpe": 0.3225276407630377,
+    "sortino": 0.45917441721901775,
+    "total_costs": 33054.41125317449,
+    "total_return": 0.1829989444199953,
+    "trade_count": 19,
+    "turnover": 9.330461417750062,
+    "unavailable": {},
+    "win_rate": 0.7368421052631579,
+    "winning_trades": 14
+  },
+  "parameters": {
+    "exit_at_middle": true,
+    "num_std": 2.0,
+    "window": 20
+  },
+  "signal_summary": {
+    "bars_flat": 779,
+    "bars_long": 213,
+    "bars_short": 0,
+    "signal_changes": 39,
+    "warmup_bars": 20
+  },
+  "start": "2020-01-01",
+  "strategy": "bollinger",
+  "symbol": "RELIANCE.NS"
+}

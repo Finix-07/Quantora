@@ -1,0 +1,21 @@
+{
+  "data_version": "sha256:8746c349c1396dcc520d40c9e2c9fb7d",
+  "interval": "1d",
+  "provenance": {
+    "adjustment_policy": "split_and_dividend_adjusted",
+    "currency": "INR",
+    "first_timestamp": "2020-01-01T00:00:00+05:30",
+    "interval": "1d",
+    "last_timestamp": "2023-12-29T00:00:00+05:30",
+    "provider": "yfinance",
+    "provider_ticker": "TCS.NS",
+    "requested_end": "2023-12-31",
+    "requested_start": "2020-01-01",
+    "retrieval_timestamp": "2026-09-10T21:13:38.863175+00:00",
+    "row_count": 992,
+    "symbol": "TCS.NS",
+    "timezone": "Asia/Kolkata"
+  },
+  "row_count": 992,
+  "symbol": "TCS.NS"
+}

@@ -1,0 +1,255 @@
+{
+  "backtest_config": {
+    "allow_short": true,
+    "cost_model": {
+      "commission_bps": 3.0,
+      "commission_min": 0.0,
+      "slippage_bps": 5.0,
+      "spread_bps": 2.0
+    },
+    "execution_model": "next_bar_open",
+    "initial_cash": 1000000.0,
+    "liquidate_at_end": true,
+    "risk_free_rate": 0.0
+  },
+  "cost_model": {
+    "commission_bps": 3.0,
+    "commission_min": 0.0,
+    "slippage_bps": 5.0,
+    "spread_bps": 2.0
+  },
+  "data_version": "sha256:dc49f3061114f882df1e99e64ba194f0",
+  "end": "2023-12-31",
+  "equity_curve_head": [
+    {
+      "timestamp": "2020-01-01T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-02T00:00:00+05:30",
+      "value": 1000000.0
+    },
+    {
+      "timestamp": "2020-01-03T00:00:00+05:30",
+      "value": 1000000.0
+    }
+  ],
+  "equity_curve_tail": [
+    {
+      "timestamp": "2023-12-27T00:00:00+05:30",
+      "value": 1560842.663206343
+    },
+    {
+      "timestamp": "2023-12-28T00:00:00+05:30",
+      "value": 1571633.403440718
+    },
+    {
+      "timestamp": "2023-12-29T00:00:00+05:30",
+      "value": 1558404.0452418374
+    }
+  ],
+  "first_trades": [
+    {
+      "bars_held": 30,
+      "costs": 2045.9966876430733,
+      "direction": "long",
+      "entry_price": 487.8897767914114,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2020-03-27T00:00:00+05:30",
+      "exit_price": 648.7104486008825,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2020-05-15T00:00:00+05:30",
+      "gross_pnl": 321641.3436189422,
+      "pnl": 319595.34693129914,
+      "quantity": 2000.0,
+      "return_pct": 0.3275282267985874,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 6,
+      "costs": 2229.006408076032,
+      "direction": "long",
+      "entry_price": 694.4677980016363,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2020-06-04T00:00:00+05:30",
+      "exit_price": 673.8681724293452,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2020-06-12T00:00:00+05:30",
+      "gross_pnl": -37285.32228584684,
+      "pnl": -39514.32869392288,
+      "quantity": 1810.0,
+      "return_pct": -0.031435756831622474,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 11,
+      "costs": 2284.3490394533437,
+      "direction": "long",
+      "entry_price": 738.9966713691681,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2020-06-16T00:00:00+05:30",
+      "exit_price": 772.702169379786,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2020-07-01T00:00:00+05:30",
+      "gross_pnl": 56591.53115982751,
+      "pnl": 54307.182120374164,
+      "quantity": 1679.0,
+      "return_pct": 0.04376874463251144,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 9,
+      "costs": 2336.677273324788,
+      "direction": "long",
+      "entry_price": 815.1654954491215,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2020-07-06T00:00:00+05:30",
+      "exit_price": 832.2308880110718,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2020-07-17T00:00:00+05:30",
+      "gross_pnl": 26895.058677633613,
+      "pnl": 24558.381404308824,
+      "quantity": 1576.0,
+      "return_pct": 0.019116031535252136,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 9,
+      "costs": 2369.5178846450817,
+      "direction": "long",
+      "entry_price": 895.553008263168,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2020-07-22T00:00:00+05:30",
+      "exit_price": 911.4392767167741,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2020-08-04T00:00:00+05:30",
+      "gross_pnl": 23146.29313690414,
+      "pnl": 20776.77525225906,
+      "quantity": 1457.0,
+      "return_pct": 0.01592308792017878,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "interval": "1d",
+  "last_trades": [
+    {
+      "bars_held": 7,
+      "costs": 2503.2855302748308,
+      "direction": "long",
+      "entry_price": 1160.2226517338802,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2023-06-15T00:00:00+05:30",
+      "exit_price": 1138.4866207201997,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2023-06-26T00:00:00+05:30",
+      "gross_pnl": -26300.597526553443,
+      "pnl": -28803.883056828276,
+      "quantity": 1210.0,
+      "return_pct": -0.020517494633346206,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 15,
+      "costs": 2522.734658686726,
+      "direction": "long",
+      "entry_price": 1193.5044124401372,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2023-07-04T00:00:00+05:30",
+      "exit_price": 1227.0675137191452,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2023-07-25T00:00:00+05:30",
+      "gross_pnl": 38866.07128109118,
+      "pnl": 36343.33662240445,
+      "quantity": 1158.0,
+      "return_pct": 0.02629615241701034,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 5,
+      "costs": 2511.293874344793,
+      "direction": "long",
+      "entry_price": 1206.1863282348395,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2023-09-13T00:00:00+05:30",
+      "exit_price": 1172.6215200014587,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2023-09-21T00:00:00+05:30",
+      "gross_pnl": -39371.52005775562,
+      "pnl": -41882.81393210041,
+      "quantity": 1173.0,
+      "return_pct": -0.02960216252785206,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 8,
+      "costs": 2424.6027461215544,
+      "direction": "long",
+      "entry_price": 1158.6555756219127,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2023-10-12T00:00:00+05:30",
+      "exit_price": 1110.9527259797267,
+      "exit_reason": "MACD crossed below its signal line \u2014 exiting",
+      "exit_timestamp": "2023-10-25T00:00:00+05:30",
+      "gross_pnl": -56623.28252527483,
+      "pnl": -59047.885271396386,
+      "quantity": 1187.0,
+      "return_pct": -0.04293379454384442,
+      "symbol": "RELIANCE.NS"
+    },
+    {
+      "bars_held": 39,
+      "costs": 2531.2707644256725,
+      "direction": "long",
+      "entry_price": 1131.6154085763137,
+      "entry_reason": "MACD crossed above its signal line",
+      "entry_timestamp": "2023-11-01T00:00:00+05:30",
+      "exit_price": 1276.3082182128906,
+      "exit_reason": "backtest ended \u2014 position closed at the final close",
+      "exit_timestamp": "2023-12-29T00:00:00+05:30",
+      "gross_pnl": 169001.20165552176,
+      "pnl": 166469.9308910961,
+      "quantity": 1168.0,
+      "return_pct": 0.12594882031717503,
+      "symbol": "RELIANCE.NS"
+    }
+  ],
+  "metrics": {
+    "annualized_volatility": 0.19376975929534704,
+    "average_loss": -47678.560301166865,
+    "average_win": 100044.58460837622,
+    "cagr": 0.11942845965381155,
+    "calmar": 0.5106783594248993,
+    "cost_drag": 0.08847744722237777,
+    "exposure": 0.4782456710418304,
+    "final_equity": 1558404.0452418374,
+    "losing_trades": 21,
+    "max_drawdown": -0.23386238607859944,
+    "max_drawdown_duration_bars": 280,
+    "profit_factor": 1.4987956248264211,
+    "sharpe": 0.6779179946884981,
+    "sortino": 1.089392952140841,
+    "total_costs": 88477.44722237777,
+    "total_return": 0.5584040452418373,
+    "trade_count": 36,
+    "turnover": 17.73025560647456,
+    "unavailable": {},
+    "win_rate": 0.4166666666666667,
+    "winning_trades": 15
+  },
+  "parameters": {
+    "allow_short": false,
+    "fast": 12,
+    "signal": 9,
+    "slow": 26
+  },
+  "signal_summary": {
+    "bars_flat": 493,
+    "bars_long": 499,
+    "bars_short": 0,
+    "signal_changes": 72,
+    "warmup_bars": 35
+  },
+  "start": "2020-01-01",
+  "strategy": "macd",
+  "symbol": "RELIANCE.NS"
+}
