@@ -224,3 +224,22 @@ regression.
 Verified end to end: a saved 2022-2024 RELIANCE.NS MACD experiment reruns with
 `reproducible: true` and zero differences against the live provider and the real
 database.
+
+### 2026-09-11 — Renaming the Compose project orphans the database volume
+
+- **What happens:** `name:` in `infra/compose/docker-compose.yml` is the Compose
+  project name and prefixes every volume. Changing `ai-quant-terminal` →
+  `quantora` means the stack creates `quantora_db_data` and no longer sees
+  `ai-quant-terminal_db_data`. Nothing is deleted; the old volume is simply
+  unreferenced, so saved experiments appear to have vanished.
+- **To migrate the old data (only if that volume still holds wanted rows):**
+
+  ```bash
+  docker run --rm -v ai-quant-terminal_db_data:/from -v quantora_db_data:/to \
+    alpine sh -c 'cd /from && cp -a . /to'
+  ```
+
+  with the stack down, then `make up && make migrate`.
+- **To discard it:** `docker volume rm ai-quant-terminal_db_data`.
+- **Lesson:** treat the Compose `name:` as part of the persistence contract, not
+  as a label.
