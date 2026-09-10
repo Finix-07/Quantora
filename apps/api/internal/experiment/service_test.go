@@ -281,11 +281,11 @@ func TestRerunDistinguishesRevisedDataFromACodeRegression(t *testing.T) {
 	// The two need different responses, so a single "reproducible: false" would
 	// leave the user unable to tell them apart.
 	tests := []struct {
-		name           string
-		rerunPayload   string
-		wantDataMatch  bool
-		wantMetricsOK  bool
-		wantInMessage  string
+		name          string
+		rerunPayload  string
+		wantDataMatch bool
+		wantMetricsOK bool
+		wantInMessage string
 	}{
 		{
 			name:          "data revised, metrics moved",

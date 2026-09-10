@@ -402,9 +402,7 @@ def simulate_targets(
             "the executor needs exactly one target per bar"
         )
     if reasons is not None and len(reasons) != len(frame):
-        raise ValueError(
-            f"reasons has {len(reasons)} entries but there are {len(frame)} bars"
-        )
+        raise ValueError(f"reasons has {len(reasons)} entries but there are {len(frame)} bars")
 
     portfolio = Portfolio(initial_cash=cfg.initial_cash)
     output = SimulationOutput(

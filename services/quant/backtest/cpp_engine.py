@@ -79,9 +79,7 @@ def _load_extension() -> tuple[ModuleType | None, str]:
         pass
 
     if not _BUILD_DIR.is_dir():
-        return None, (
-            f"the C++ extension has not been built: no build directory at {_BUILD_DIR}"
-        )
+        return None, (f"the C++ extension has not been built: no build directory at {_BUILD_DIR}")
 
     candidates = sorted(_BUILD_DIR.glob(f"{EXTENSION_NAME}*.so")) + sorted(
         _BUILD_DIR.glob(f"{EXTENSION_NAME}*.pyd")
@@ -277,9 +275,7 @@ def _to_simulation_output(
     return SimulationOutput(
         symbol=symbol,
         strategy=strategy,
-        equity_curve=pd.Series(
-            result.equity_curve, index=index, dtype="float64", name="equity"
-        ),
+        equity_curve=pd.Series(result.equity_curve, index=index, dtype="float64", name="equity"),
         positions=[
             PositionEvent(
                 timestamp=index[event.bar_index],

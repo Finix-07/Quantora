@@ -81,7 +81,9 @@ def _alternating(n: int, quantity: float, period: int) -> list[float]:
     return [quantity if (i // period) % 2 == 0 else 0.0 for i in range(n)]
 
 
-def _crossover_targets(frame: pd.DataFrame, *, fast: int, slow: int, notional: float) -> list[float]:
+def _crossover_targets(
+    frame: pd.DataFrame, *, fast: int, slow: int, notional: float
+) -> list[float]:
     """Whole-unit long/flat targets from a moving-average crossover.
 
     Computed here rather than by a Strategy so this file has no dependency on
@@ -235,9 +237,7 @@ def test_every_fill_matches(name: str, outputs) -> None:
     python_output, cpp_output = outputs[name]
     assert len(cpp_output.fills) == len(python_output.fills), f"{name}: fill count differs"
 
-    for i, (expected, actual) in enumerate(
-        zip(python_output.fills, cpp_output.fills, strict=True)
-    ):
+    for i, (expected, actual) in enumerate(zip(python_output.fills, cpp_output.fills, strict=True)):
         where = f"{name}: fill {i} at {expected.timestamp}"
         assert actual.timestamp == expected.timestamp, where
         assert actual.side is expected.side, where
@@ -317,16 +317,14 @@ def test_final_state_and_cost_totals_match(name: str, outputs) -> None:
     cpp_portfolio = cpp_output.portfolio
 
     assert close(cpp_portfolio.cash, python_portfolio.cash), f"{name}: final cash"
-    assert close(
-        cpp_portfolio.quantity(SYMBOL), python_portfolio.quantity(SYMBOL)
-    ), f"{name}: final position"
-    assert close(
-        cpp_portfolio.realized_pnl, python_portfolio.realized_pnl
-    ), f"{name}: realized PnL"
+    assert close(cpp_portfolio.quantity(SYMBOL), python_portfolio.quantity(SYMBOL)), (
+        f"{name}: final position"
+    )
+    assert close(cpp_portfolio.realized_pnl, python_portfolio.realized_pnl), f"{name}: realized PnL"
     for field in ("total_commission", "total_slippage", "total_traded_notional"):
-        assert close(
-            getattr(cpp_portfolio, field), getattr(python_portfolio, field)
-        ), f"{name}: {field}"
+        assert close(getattr(cpp_portfolio, field), getattr(python_portfolio, field)), (
+            f"{name}: {field}"
+        )
 
 
 @pytest.mark.parametrize("name", NAMES)
