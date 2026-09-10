@@ -230,13 +230,89 @@ verdict is the answer to the user's question, not an error.
 
 ---
 
+## Portfolio and risk
+
+### `POST /api/portfolio` · `GET /api/portfolio` · `GET|PUT|DELETE /api/portfolio/{id}`
+
+```bash
+curl -X POST localhost:8080/api/portfolio -H 'Content-Type: application/json' -d '{
+  "name": "Core equity", "benchmark": "NIFTY",
+  "holdings": [
+    {"symbol": "RELIANCE.NS", "quantity": 100, "cost_basis": 1200},
+    {"symbol": "TCS.NS", "quantity": 50}
+  ]
+}'
+```
+
+`cost_basis` is optional and stays absent when unrecorded. It is not defaulted to
+zero: a portfolio is analysable either way, and a zero would report a fabricated
+100% unrealised gain.
+
+A `PUT` replaces the holdings and keeps the ID, so saved reports keep pointing at
+the same portfolio. Saved reports are snapshots and are never recomputed — a
+report describes the holdings as they were when it ran.
+
+### `POST /api/portfolio/risk`
+
+Supply either `portfolio_id` (a saved portfolio) or `holdings` (an ad-hoc set) —
+never both, or the report could not say which set it described.
+
+```bash
+curl -X POST localhost:8080/api/portfolio/risk -H 'Content-Type: application/json' -d '{
+  "portfolio_id": "pf_…", "start": "2022-01-01", "end": "2024-12-31",
+  "save_report": true, "save_as": "quarterly review"
+}'
+```
+
+Returns allocation, concentration, sector exposure, the correlation matrix, and
+`metrics`: total value, annualized return and volatility, beta against the
+benchmark, Sharpe, Sortino, max drawdown and duration. Any metric may be `null`
+with its reason under `metrics.unavailable` — a beta of `0` would claim the
+portfolio does not move with the market, which is a measurement, not an absence.
+
+`assumptions` states how the numbers were produced, most importantly that weights
+are held constant at their as-of-date values (a static-weight portfolio). Any
+holding dropped for insufficient overlapping history is named in
+`dropped_symbols` rather than silently excluded.
+
+`save_report` is off by default: an exploratory analysis that filled the report
+list would bury the ones the user deliberately kept.
+
+### `POST /api/portfolio/scenario`
+
+Same body plus `weights`. Returns `before`, `after`, per-holding `changes` in
+words, and `deltas` carrying each metric's better direction and whether the
+change was an improvement.
+
+```json
+{"metric": "sharpe", "before": 0.4295, "after": 0.4728,
+ "delta": 0.0433, "better": "higher", "improved": true}
+```
+
+Beta's `better` is `null` on purpose: a beta that rose is neither good nor bad
+without knowing what the user wanted.
+
+Both states are measured over one fetch of the same bars. Split across two calls,
+a provider revising history in between would look like a risk difference caused
+by the reweighting.
+
+A negative weight is refused as "a short position, which the portfolio engine
+does not model"; an all-zero vector as a portfolio holding nothing.
+
+### `GET /api/portfolio/reports?portfolio_id=&kind=&limit=` · `GET /api/portfolio/reports/{id}`
+
+`kind` is `risk` or `scenario`. For a scenario, the listed metrics are the
+**before** state, so every row is the portfolio as it actually stood and rows
+compare like with like; the reweighting is inside the report.
+
+---
+
 ## Not yet available
 
 These are planned and deliberately absent rather than stubbed:
 
 | Surface | Milestone |
 |---|---|
-| Portfolio and risk endpoints | M5 |
 | MCP tool surface | M6 |
 | AI research endpoint | M7 |
 | Web UI views | M8 |
