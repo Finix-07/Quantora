@@ -38,6 +38,7 @@ addopts = "-q --strict-markers"
 markers = [
     "network: test performs a real network call to an external provider (yfinance/Gemini); deselect with -m 'not network'",
     "database: test requires a reachable PostgreSQL instance; deselect with -m 'not database'",
+    "integration: test drives the running Docker Compose stack over HTTP; deselect with -m 'not integration'",
 ]
 filterwarnings = ["error::DeprecationWarning:services.*"]
 
