@@ -9,11 +9,25 @@ The bar loop is deliberately explicit rather than vectorised. Vectorising it
 would hide the one thing that has to be provable — that a decision made at bar
 *t* can only be executed with bar *t+1*'s prices — and a look-ahead bug hidden
 inside a `shift()` is exactly the failure NFR5.3 exists to prevent.
+
+The loop is split in two along the seam the C++ engine (M4) replaces:
+
+* deciding a **target position** for each bar — this calls the strategy, needs
+  indicators and sizing context, and stays in Python;
+* **executing** that target against the following bar with costs, the cash
+  constraint and portfolio accounting — a closed numeric problem, and the part
+  the C++ executor mirrors.
+
+:func:`simulate` supplies the first half from a strategy; :func:`simulate_targets`
+supplies it from a pre-computed array. Both drive the *same* execution loop, so
+the C++ parity test compares two implementations of one problem rather than two
+different problems.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -26,7 +40,7 @@ from services.quant.backtest.events import (
     OrderSide,
     PositionEvent,
 )
-from services.quant.backtest.portfolio import Portfolio
+from services.quant.backtest.portfolio import Portfolio, PositionState
 from services.quant.data.types import PriceSeries
 from services.quant.strategies.base import (
     ExitContext,
@@ -38,6 +52,13 @@ from services.quant.strategies.base import (
 )
 
 log = logging.getLogger(__name__)
+
+#: What a decision step returns for one bar: the position to hold from the next
+#: bar onwards, and the human-readable reason recorded on the resulting order.
+TargetDecision = tuple[float, str]
+
+#: ``(bar_index, market, equity, position) -> (target_quantity, reason)``.
+DecisionFn = Callable[[int, MarketEvent, float, PositionState], TargetDecision]
 
 
 @dataclass(slots=True)
@@ -81,6 +102,131 @@ def _pending_order(
     )
 
 
+# ---------------------------------------------------------------- warnings ---
+# The C++ executor reports a constrained fill as *facts* (which bar, how much was
+# asked for, how much was affordable, at what price) and leaves the wording to
+# these two functions, so the two engines cannot drift into describing the same
+# event differently. That is also why the text lives at module level rather than
+# inline in `_execute`.
+
+
+def skipped_buy_warning(
+    timestamp: pd.Timestamp, symbol: str, quantity: float, fill_price: float
+) -> str:
+    return (
+        f"{timestamp.date()}: skipped a buy of {quantity:g} "
+        f"{symbol} — insufficient cash at {fill_price:.2f}."
+    )
+
+
+def reduced_buy_warning(
+    timestamp: pd.Timestamp, symbol: str, quantity: float, affordable: float
+) -> str:
+    return (
+        f"{timestamp.date()}: reduced a buy of {quantity:g} to {affordable:g} "
+        f"{symbol} — insufficient cash for the full size."
+    )
+
+
+def _run_execution(
+    *,
+    symbol: str,
+    frame: pd.DataFrame,
+    config: BacktestConfig,
+    portfolio: Portfolio,
+    output: SimulationOutput,
+    decide: DecisionFn,
+) -> None:
+    """The execution half of the pipeline: targets in, portfolio state out.
+
+    Everything strategy-specific has already happened by the time ``decide``
+    returns a number, so this loop is the entire behaviour the C++ executor has
+    to reproduce.
+    """
+    index = frame.index
+    n = len(frame)
+    price_field = config.execution_model.price_field
+
+    equity_values: list[float] = []
+    exposure_values: list[float] = []
+
+    # Orders decided on the previous bar, awaiting execution on this one. This
+    # single-slot queue is the mechanism that enforces the causality guarantee:
+    # nothing can be placed and filled within the same bar.
+    pending: OrderEvent | None = None
+
+    for i in range(n):
+        timestamp = index[i]
+        row = frame.iloc[i]
+        market = MarketEvent(
+            timestamp=timestamp,
+            symbol=symbol,
+            open=float(row["open"]),
+            high=float(row["high"]),
+            low=float(row["low"]),
+            close=float(row["close"]),
+            volume=float(row["volume"]),
+        )
+
+        # --- 1. Execute the order decided on the previous bar ----------------
+        if pending is not None:
+            fill = _execute(pending, market, price_field, portfolio, config, output.warnings)
+            if fill is not None:
+                portfolio.apply_fill(fill, bar_index=i)
+                output.fills.append(fill)
+            pending = None
+
+        # --- 2. Mark to market at this bar's close ---------------------------
+        prices = {symbol: market.close}
+        equity = portfolio.equity(prices)
+        position_state = portfolio.position(symbol)
+        equity_values.append(equity)
+        exposure_values.append(
+            position_state.market_value(market.close) / equity if equity else 0.0
+        )
+        output.positions.append(
+            PositionEvent(
+                timestamp=timestamp,
+                symbol=symbol,
+                quantity=position_state.quantity,
+                average_price=position_state.average_price,
+                cash=portfolio.cash,
+                market_value=position_state.market_value(market.close),
+                unrealized_pnl=position_state.unrealized_pnl(market.close),
+                realized_pnl=position_state.realized_pnl,
+            )
+        )
+
+        if i == n - 1:
+            break  # no bar left to execute on
+
+        # --- 3. Decide the position to hold from the next bar ----------------
+        target_quantity, reason = decide(i, market, equity, position_state)
+
+        order = _pending_order(
+            decision_timestamp=timestamp,
+            execution_timestamp=index[i + 1],
+            symbol=symbol,
+            delta=target_quantity - position_state.quantity,
+            reason=reason,
+        )
+        if order is not None:
+            output.orders.append(order)
+            pending = order
+
+    # --- 4. Close out ------------------------------------------------------
+    if config.liquidate_at_end:
+        _liquidate(symbol, frame, portfolio, config, output, n)
+        # The final equity point must reflect the liquidation, or a held winner
+        # would be booked as though it had been cashed out for free.
+        last_close = float(frame.iloc[-1]["close"])
+        equity_values[-1] = portfolio.equity({symbol: last_close})
+        exposure_values[-1] = 0.0
+
+    output.equity_curve = pd.Series(equity_values, index=index, dtype="float64", name="equity")
+    output.exposure = pd.Series(exposure_values, index=index, dtype="float64", name="exposure")
+
+
 def simulate(
     series: PriceSeries,
     strategy: Strategy,
@@ -113,18 +259,7 @@ def simulate(
         signals=signals,
     )
 
-    frame = series.frame
-    index = frame.index
-    n = len(frame)
-    price_field = cfg.execution_model.price_field
-
-    equity_values: list[float] = []
-    exposure_values: list[float] = []
-
-    # Orders decided on the previous bar, awaiting execution on this one. This
-    # single-slot queue is the mechanism that enforces the causality guarantee:
-    # nothing can be placed and filled within the same bar.
-    pending: OrderEvent | None = None
+    indicator_frame = signals.indicators
 
     # After a discretionary exit (a stop, a time-based exit), the strategy's
     # target direction is usually still pointing the same way, so the engine
@@ -133,56 +268,14 @@ def simulate(
     # its mind.
     suppressed_direction: SignalDirection | None = None
 
-    indicator_frame = signals.indicators
-
-    for i in range(n):
-        timestamp = index[i]
-        row = frame.iloc[i]
-        market = MarketEvent(
-            timestamp=timestamp,
-            symbol=series.symbol,
-            open=float(row["open"]),
-            high=float(row["high"]),
-            low=float(row["low"]),
-            close=float(row["close"]),
-            volume=float(row["volume"]),
-        )
-
-        # --- 1. Execute the order decided on the previous bar ----------------
-        if pending is not None:
-            fill = _execute(pending, market, price_field, portfolio, cfg, output.warnings)
-            if fill is not None:
-                portfolio.apply_fill(fill, bar_index=i)
-                output.fills.append(fill)
-            pending = None
-
-        # --- 2. Mark to market at this bar's close ---------------------------
-        prices = {series.symbol: market.close}
-        equity = portfolio.equity(prices)
-        position_state = portfolio.position(series.symbol)
-        equity_values.append(equity)
-        exposure_values.append(
-            position_state.market_value(market.close) / equity if equity else 0.0
-        )
-        output.positions.append(
-            PositionEvent(
-                timestamp=timestamp,
-                symbol=series.symbol,
-                quantity=position_state.quantity,
-                average_price=position_state.average_price,
-                cash=portfolio.cash,
-                market_value=position_state.market_value(market.close),
-                unrealized_pnl=position_state.unrealized_pnl(market.close),
-                realized_pnl=position_state.realized_pnl,
-            )
-        )
-
-        if i == n - 1:
-            break  # no bar left to execute on
-
+    def decide(
+        i: int, market: MarketEvent, equity: float, position_state: PositionState
+    ) -> TargetDecision:
+        nonlocal suppressed_direction
+        timestamp = market.timestamp
         indicators = _indicator_row(indicator_frame, timestamp)
 
-        # --- 3. Discretionary exit, evaluated on this bar's close ------------
+        # --- Discretionary exit, evaluated on this bar's close ---------------
         target_quantity: float | None = None
         reason = ""
         if not position_state.is_flat:
@@ -208,7 +301,7 @@ def simulate(
                 reason = exit_decision.reason or "strategy exit signal"
                 suppressed_direction = _direction_of(position_state.quantity)
 
-        # --- 4. Target position from this bar's signal -----------------------
+        # --- Target position from this bar's signal --------------------------
         if target_quantity is None:
             direction = SignalDirection(int(signals.frame.iloc[i]["direction"]))
             if direction is SignalDirection.SHORT and not cfg.allow_short:
@@ -248,39 +341,91 @@ def simulate(
                     )
                 )
 
-        order = _pending_order(
-            decision_timestamp=timestamp,
-            execution_timestamp=index[i + 1],
-            symbol=series.symbol,
-            delta=target_quantity - position_state.quantity,
-            reason=reason,
-        )
-        if order is not None:
-            output.orders.append(order)
-            pending = order
+        return target_quantity, reason
 
-    # --- 5. Close out ------------------------------------------------------
-    if cfg.liquidate_at_end:
-        _liquidate(series, portfolio, cfg, output, n)
-        # The final equity point must reflect the liquidation, or a held winner
-        # would be booked as though it had been cashed out for free.
-        last_close = float(frame.iloc[-1]["close"])
-        equity_values[-1] = portfolio.equity({series.symbol: last_close})
-        exposure_values[-1] = 0.0
-
-    output.equity_curve = pd.Series(equity_values, index=index, dtype="float64", name="equity")
-    output.exposure = pd.Series(exposure_values, index=index, dtype="float64", name="exposure")
+    _run_execution(
+        symbol=series.symbol,
+        frame=series.frame,
+        config=cfg,
+        portfolio=portfolio,
+        output=output,
+        decide=decide,
+    )
 
     log.info(
         "execution simulation completed",
         extra={
             "symbol": series.symbol,
             "strategy": strategy.name,
-            "bars": n,
+            "bars": len(series.frame),
             "orders": len(output.orders),
             "fills": len(output.fills),
             "trades": len(portfolio.trades),
         },
+    )
+    return output
+
+
+def simulate_targets(
+    frame: pd.DataFrame,
+    targets: Sequence[float],
+    *,
+    symbol: str = "SYNTHETIC",
+    reasons: Sequence[str] | None = None,
+    config: BacktestConfig | None = None,
+    strategy: str = "targets",
+) -> SimulationOutput:
+    """Execute a pre-computed per-bar target position.
+
+    This is the parity surface shared with the C++ executor (architecture.md §7):
+    bars in, a target quantity per bar in, portfolio state out — no strategy, no
+    indicators, no pandas beyond the frame itself. ``targets[i]`` is the position
+    to hold *from bar i+1 onwards*, decided at bar ``i``'s close; the last entry
+    is therefore never acted on, exactly as in :func:`simulate`.
+
+    Args:
+        frame: OHLCV bars, one row per bar.
+        targets: one target quantity per bar.
+        symbol: recorded on the events; the executor is single-instrument.
+        reasons: one order reason per bar. Defaults to empty strings.
+        config: execution assumptions. ``allow_short`` is not consulted — a
+            direction constraint belongs to the decision half, and by the time a
+            target has been chosen the sign has already been settled.
+        strategy: name recorded on the output.
+    """
+    cfg = config or BacktestConfig()
+    if len(frame) == 0:
+        raise ValueError("cannot simulate a backtest over an empty price series")
+    if len(targets) != len(frame):
+        raise ValueError(
+            f"targets has {len(targets)} entries but there are {len(frame)} bars; "
+            "the executor needs exactly one target per bar"
+        )
+    if reasons is not None and len(reasons) != len(frame):
+        raise ValueError(
+            f"reasons has {len(reasons)} entries but there are {len(frame)} bars"
+        )
+
+    portfolio = Portfolio(initial_cash=cfg.initial_cash)
+    output = SimulationOutput(
+        symbol=symbol,
+        strategy=strategy,
+        equity_curve=pd.Series(dtype="float64"),
+        portfolio=portfolio,
+    )
+
+    def decide(
+        i: int, _market: MarketEvent, _equity: float, _position: PositionState
+    ) -> TargetDecision:
+        return float(targets[i]), ("" if reasons is None else str(reasons[i]))
+
+    _run_execution(
+        symbol=symbol,
+        frame=frame,
+        config=cfg,
+        portfolio=portfolio,
+        output=output,
+        decide=decide,
     )
     return output
 
@@ -341,13 +486,11 @@ def _execute(
             )
             if affordable <= 0:
                 warnings.append(
-                    f"{market.timestamp.date()}: skipped a buy of {quantity:g} "
-                    f"{order.symbol} — insufficient cash at {fill_price:.2f}."
+                    skipped_buy_warning(market.timestamp, order.symbol, quantity, fill_price)
                 )
                 return None
             warnings.append(
-                f"{market.timestamp.date()}: reduced a buy of {quantity:g} to {affordable:g} "
-                f"{order.symbol} — insufficient cash for the full size."
+                reduced_buy_warning(market.timestamp, order.symbol, quantity, affordable)
             )
             quantity = affordable
             commission = config.cost_model.commission(quantity * fill_price)
@@ -367,18 +510,19 @@ def _execute(
 
 
 def _liquidate(
-    series: PriceSeries,
+    symbol: str,
+    frame: pd.DataFrame,
     portfolio: Portfolio,
     config: BacktestConfig,
     output: SimulationOutput,
     bar_count: int,
 ) -> None:
-    position = portfolio.position(series.symbol)
+    position = portfolio.position(symbol)
     if position.is_flat:
         return
 
-    last = series.frame.iloc[-1]
-    timestamp = series.frame.index[-1]
+    last = frame.iloc[-1]
+    timestamp = frame.index[-1]
     side = OrderSide.SELL if position.quantity > 0 else OrderSide.BUY
     quantity = abs(position.quantity)
     reference_price = float(last["close"])
@@ -386,7 +530,7 @@ def _liquidate(
 
     fill = FillEvent(
         timestamp=timestamp,
-        symbol=series.symbol,
+        symbol=symbol,
         side=side,
         quantity=quantity,
         reference_price=reference_price,
