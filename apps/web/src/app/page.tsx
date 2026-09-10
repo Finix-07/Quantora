@@ -46,7 +46,7 @@ export default function HomePage() {
         <p className="mb-2 text-xs font-semibold tracking-[0.2em] text-accent uppercase">
           Local research terminal
         </p>
-        <h1 className="text-3xl font-semibold">AI Quant Terminal</h1>
+        <h1 className="text-3xl font-semibold">Quantora</h1>
         <p className="mt-3 max-w-2xl text-text-secondary">
           Market data, indicators, strategies, backtests, portfolio risk and
           reproducible experiments in one place — with an AI researcher that{" "}

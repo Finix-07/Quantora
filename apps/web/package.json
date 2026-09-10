@@ -1,5 +1,5 @@
 {
-  "name": "@ai-quant-terminal/web",
+  "name": "@quantora/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {

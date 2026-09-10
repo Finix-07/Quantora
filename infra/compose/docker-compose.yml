@@ -1,4 +1,4 @@
-# AI Quant Terminal — local stack.
+# Quantora — local stack.
 #
 # Single-user, fully local deployment (deployment.md §1/§2). Bring it up from
 # the repository root:
@@ -11,12 +11,12 @@
 # provider and Ollama is an opt-in fallback behind the `local-llm` profile
 # (deployment.md §2, amended 2026-09-09).
 
-name: ai-quant-terminal
+name: quantora
 
 services:
   db:
     image: postgres:17-alpine
-    container_name: aiqt-db
+    container_name: quantora-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-quant}
@@ -40,7 +40,7 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/quant-mcp.Dockerfile
-    container_name: aiqt-quant-mcp
+    container_name: quantora-quant-mcp
     restart: unless-stopped
     depends_on:
       db:
@@ -77,7 +77,7 @@ services:
       dockerfile: infra/docker/api.Dockerfile
       args:
         VERSION: ${API_VERSION:-dev}
-    container_name: aiqt-api
+    container_name: quantora-api
     restart: unless-stopped
     depends_on:
       db:
@@ -108,7 +108,7 @@ services:
         # Compose network — is what resolves this URL, so it points at the
         # host-published API port rather than at the `api` service name.
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-    container_name: aiqt-web
+    container_name: quantora-web
     restart: unless-stopped
     depends_on:
       api:
@@ -136,7 +136,7 @@ services:
   # (deployment.md §2). Switch providers with LLM_PROVIDER=ollama in .env.
   ollama:
     image: ollama/ollama:latest
-    container_name: aiqt-ollama
+    container_name: quantora-ollama
     profiles: ["local-llm"]
     restart: unless-stopped
     ports:
@@ -157,7 +157,7 @@ services:
   # the failure is readable.
   migrate:
     image: migrate/migrate:v4.18.1
-    container_name: aiqt-migrate
+    container_name: quantora-migrate
     profiles: ["tools"]
     depends_on:
       db:

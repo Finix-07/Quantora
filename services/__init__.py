@@ -1,4 +1,4 @@
-"""AI Quant Terminal service packages.
+"""Quantora service packages.
 
 `services.quant` is the framework-agnostic quantitative engine (data,
 indicators, strategies, backtest, portfolio math). `services.mcp` is the MCP

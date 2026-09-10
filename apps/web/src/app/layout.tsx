@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Quant Terminal",
+  title: "Quantora",
   description:
     "Local research terminal for market data, strategies, backtests, portfolio risk and reproducible experiments.",
 };

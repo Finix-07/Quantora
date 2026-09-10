@@ -76,7 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(resolved.log_level)
 
     app = FastAPI(
-        title="AI Quant Terminal — quant-mcp",
+        title="Quantora — quant-mcp",
         version=__version__,
         description=(
             "Quantitative engine HTTP surface consumed by the Go API. "

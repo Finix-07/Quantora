@@ -1,4 +1,4 @@
-# AI Quant Terminal
+# Quantora — AI Quantitative Research & Portfolio Analytics Platform
 
 A single-user, fully local research terminal for quantitative trading
 research: market data → indicators → strategies → backtests → portfolio risk

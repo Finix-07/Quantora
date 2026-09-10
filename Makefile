@@ -1,4 +1,4 @@
-# AI Quant Terminal — developer entry points.
+# Quantora — developer entry points.
 #
 # Every target is safe to run from the repository root and assumes only Docker
 # plus the local toolchains. `make help` lists what is available.
