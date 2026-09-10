@@ -18,7 +18,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Build-time only: pybind11 supplies the CMake glue for the C++ extension and is
+# never imported at runtime. Kept as its own extra so the Docker builder stage
+# can install it without dragging in the test toolchain.
+build = [
+    "pybind11>=2.13",
+]
 dev = [
+    "pybind11>=2.13",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.7",
