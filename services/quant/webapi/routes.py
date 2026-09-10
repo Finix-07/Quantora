@@ -27,6 +27,9 @@ from services.quant.data.errors import (
 )
 from services.quant.data.service import get_prices
 from services.quant.data.universe import all_instruments, get_universe
+from services.quant.portfolio.holdings import Portfolio
+from services.quant.portfolio.risk import analyze_portfolio_risk
+from services.quant.portfolio.scenario import run_scenario
 from services.quant.strategies.base import (
     InsufficientDataError,
     InvalidParametersError,
@@ -34,7 +37,13 @@ from services.quant.strategies.base import (
 )
 from services.quant.strategies.registry import UnknownStrategyError, describe_all
 from services.quant.webapi.errors import ErrorCode, ServiceError
-from services.quant.webapi.schemas import BacktestRequest, CompareRequest, CostModelPayload
+from services.quant.webapi.schemas import (
+    BacktestRequest,
+    CompareRequest,
+    CostModelPayload,
+    PortfolioRiskRequest,
+    PortfolioScenarioRequest,
+)
 
 log = logging.getLogger(__name__)
 
@@ -210,4 +219,61 @@ def compare_strategies_endpoint(payload: CompareRequest) -> JSONResponse:
     except Exception as exc:
         raise _service_error(exc) from exc
 
+    return JSONResponse(comparison)
+
+
+def _portfolio(payload: PortfolioRiskRequest) -> Portfolio:
+    """Build the domain portfolio, letting its own validation produce the error.
+
+    `Portfolio` already rejects duplicates, unknown symbols and unusable
+    quantities with messages that explain the rule. Re-checking here would give
+    the same request two different explanations depending on which layer noticed
+    first.
+    """
+    return Portfolio.from_dicts(
+        [h.model_dump() for h in payload.holdings],
+        name=payload.name,
+        base_currency=payload.base_currency,
+        benchmark=payload.benchmark,
+    )
+
+
+@router.post("/portfolio/risk", tags=["portfolio"])
+def portfolio_risk_endpoint(payload: PortfolioRiskRequest) -> JSONResponse:
+    """Allocation, concentration and risk metrics for a set of holdings (FR7)."""
+    try:
+        report = analyze_portfolio_risk(
+            _portfolio(payload),
+            payload.start,
+            payload.end,
+            interval=payload.interval,
+            benchmark=payload.benchmark,
+            risk_free_rate=payload.risk_free_rate,
+        )
+    except Exception as exc:
+        raise _service_error(exc) from exc
+    return JSONResponse(report)
+
+
+@router.post("/portfolio/scenario", tags=["portfolio"])
+def portfolio_scenario_endpoint(payload: PortfolioScenarioRequest) -> JSONResponse:
+    """Reweight a portfolio, recalculate, and return both states with deltas.
+
+    One request carries both the holdings and the reweighting so that the before
+    and after states are measured over a single fetch of the same bars. Split
+    across two calls, a provider revision between them would show up as a risk
+    difference the user would attribute to their reweighting.
+    """
+    try:
+        comparison = run_scenario(
+            _portfolio(payload),
+            payload.weights,
+            payload.start,
+            payload.end,
+            interval=payload.interval,
+            benchmark=payload.benchmark,
+            risk_free_rate=payload.risk_free_rate,
+        )
+    except Exception as exc:
+        raise _service_error(exc) from exc
     return JSONResponse(comparison)

@@ -22,6 +22,7 @@ import (
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/experiment"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/httpapi"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/logging"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/portfolio"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/storage/postgres"
 )
@@ -115,6 +116,7 @@ func run() error {
 	backtests := backtest.NewService(quantClient, backtestStore)
 	experiments := experiment.NewService(
 		postgres.NewExperimentRepository(pool), quantClient, backtestStore)
+	portfolios := portfolio.NewService(postgres.NewPortfolioRepository(pool), quantClient)
 
 	srv := &http.Server{
 		Addr: fmt.Sprintf(":%d", cfg.Port),
@@ -123,6 +125,7 @@ func run() error {
 			Health:      health,
 			Backtests:   backtests,
 			Experiments: experiments,
+			Portfolios:  portfolios,
 			Quant:       quantClient,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

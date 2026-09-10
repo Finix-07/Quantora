@@ -6,6 +6,7 @@ import (
 
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/backtest"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/experiment"
+	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/portfolio"
 	"github.com/anubhavjha/ai-quant-terminal/apps/api/internal/quant"
 )
 
@@ -22,6 +23,7 @@ type RouterDeps struct {
 	Health      *HealthRegistry
 	Backtests   *backtest.Service
 	Experiments *experiment.Service
+	Portfolios  *portfolio.Service
 	Quant       *quant.Client
 }
 
@@ -46,6 +48,19 @@ func NewRouter(deps RouterDeps) http.Handler {
 		mux.HandleFunc("GET /api/experiments/{id}", handlers.Get)
 		mux.HandleFunc("DELETE /api/experiments/{id}", handlers.Delete)
 		mux.HandleFunc("POST /api/experiments/{id}/rerun", handlers.Rerun)
+	}
+
+	if deps.Portfolios != nil {
+		handlers := PortfolioHandlers{Service: deps.Portfolios, Logger: deps.Logger}
+		mux.HandleFunc("POST /api/portfolio", handlers.Create)
+		mux.HandleFunc("GET /api/portfolio", handlers.List)
+		mux.HandleFunc("GET /api/portfolio/reports", handlers.ListReports)
+		mux.HandleFunc("GET /api/portfolio/reports/{id}", handlers.GetReport)
+		mux.HandleFunc("POST /api/portfolio/risk", handlers.Analyze)
+		mux.HandleFunc("POST /api/portfolio/scenario", handlers.Scenario)
+		mux.HandleFunc("GET /api/portfolio/{id}", handlers.Get)
+		mux.HandleFunc("PUT /api/portfolio/{id}", handlers.Update)
+		mux.HandleFunc("DELETE /api/portfolio/{id}", handlers.Delete)
 	}
 
 	if deps.Quant != nil {

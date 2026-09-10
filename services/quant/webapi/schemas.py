@@ -78,3 +78,51 @@ class IndicatorRequest(BaseModel):
     end: str
     interval: str = "1d"
     indicators: list[dict[str, Any]] = Field(min_length=1)
+
+
+class HoldingPayload(BaseModel):
+    """One position in a portfolio request.
+
+    `quantity` is bounded below by an exclusive zero rather than defaulting: a
+    holding of nothing is not a holding, and short positions are not modelled by
+    the portfolio engine. `cost_basis` stays optional — a portfolio is analysable
+    whether or not the user recorded what they paid, and a default of 0 would
+    report a fabricated unrealised gain.
+    """
+
+    symbol: str
+    quantity: float = Field(gt=0)
+    cost_basis: float | None = Field(default=None, ge=0)
+
+
+class PortfolioRiskRequest(BaseModel):
+    """Risk metrics for a set of holdings over a date range (FR7)."""
+
+    holdings: list[HoldingPayload] = Field(min_length=1)
+    start: str
+    end: str
+    interval: str = "1d"
+    benchmark: str = "NIFTY"
+    risk_free_rate: float = Field(default=0.0, ge=-1, le=1)
+    name: str = ""
+    base_currency: str = "INR"
+
+    @field_validator("interval")
+    @classmethod
+    def _known_interval(cls, value: str) -> str:
+        if value not in SUPPORTED_INTERVALS:
+            raise ValueError(f"interval must be one of {', '.join(SUPPORTED_INTERVALS)}")
+        return value
+
+
+class PortfolioScenarioRequest(PortfolioRiskRequest):
+    """A what-if reweighting of the same holdings.
+
+    `weights` is deliberately unconstrained here beyond being a number map. The
+    domain layer rejects negative, non-finite and all-zero vectors with messages
+    that say which rule was broken and why — pydantic would replace those with
+    "Input should be greater than or equal to 0", which tells the user the shape
+    of the rule but not the reason for it.
+    """
+
+    weights: dict[str, float] = Field(min_length=1)
