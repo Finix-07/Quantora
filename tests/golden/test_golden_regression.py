@@ -38,9 +38,61 @@ PAIR_SYMBOL = "TCS.NS"
 # One case per strategy family. The name is also the expectation file's name.
 GOLDEN_CASES = ("macd", "bollinger", "dual_thrust", "pair_trading")
 
-# Tight, but not bit-exact: the expectations round-trip through JSON. Any real
-# regression moves a metric by far more than this.
-TOLERANCE = 1e-9
+# Tight, but not bit-exact. The expectations are generated on one machine and
+# checked on another, and float64 arithmetic is not bit-identical across CPU
+# architectures: numpy accumulates a sum in a different order depending on the
+# SIMD width available, so a compounded equity value can land a couple of ULPs
+# away on x86_64 from where it landed on arm64. That is drift in the last digit
+# or two, around 1e-15 relative at the worst observed. Comparing relatively
+# absorbs it and still leaves six orders of magnitude between the noise floor
+# and anything a real regression would move. Determinism on a single machine is
+# checked directly, by test_rerunning_a_golden_case_twice_is_identical.
+RELATIVE_TOLERANCE = 1e-9
+# Relative comparison has no meaning for a value that is legitimately zero, so
+# the two rules are applied together and the more generous one wins.
+ABSOLUTE_TOLERANCE = 1e-9
+
+
+def agrees(got: Any, want: Any) -> bool:
+    """Whether a recorded value still matches, allowing cross-platform float drift."""
+    if isinstance(got, bool) or isinstance(want, bool):
+        return got is want
+    if isinstance(got, int | float) and isinstance(want, int | float):
+        return got == pytest.approx(want, rel=RELATIVE_TOLERANCE, abs=ABSOLUTE_TOLERANCE)
+    return got == want
+
+
+def drift_in_records(
+    actual: list[dict[str, Any]], expected: list[dict[str, Any]], label: str
+) -> list[str]:
+    """Name every field where a list of recorded rows disagrees.
+
+    Comparing the lists with `==` would report only that two long lists differ
+    and print both in full. Naming the row and the field says which number moved.
+    """
+    if len(actual) != len(expected):
+        return [f"{label}: expected {len(expected)} rows, produced {len(actual)}"]
+
+    drifted: list[str] = []
+    for position, (got, want) in enumerate(zip(actual, expected, strict=True)):
+        if got.keys() != want.keys():
+            drifted.append(f"{label}[{position}]: fields {sorted(want)} -> {sorted(got)}")
+            continue
+        drifted.extend(
+            f"{label}[{position}].{name}: {want[name]!r} -> {got[name]!r}"
+            for name in want
+            if not agrees(got[name], want[name])
+        )
+    return drifted
+
+
+def regression_message(case: str, drifted: list[str]) -> str:
+    return (
+        f"{case} produced different results than the pinned expectation:\n  "
+        + "\n  ".join(drifted)
+        + "\n\nIf this change was intended, regenerate with "
+        "`python scripts/generate_golden_fixtures.py` and explain it in the commit."
+    )
 
 
 def build_run(expected: dict[str, Any]):
@@ -119,15 +171,10 @@ class TestGoldenResults:
                 if want is not got:
                     drifted.append(f"{name}: {want!r} -> {got!r}")
                 continue
-            if abs(float(got) - float(want)) > TOLERANCE:
+            if not agrees(got, want):
                 drifted.append(f"{name}: {want} -> {got}")
 
-        assert not drifted, (
-            f"{case} produced different results than the pinned expectation:\n  "
-            + "\n  ".join(drifted)
-            + "\n\nIf this change was intended, regenerate with "
-            "`python scripts/generate_golden_fixtures.py` and explain it in the commit."
-        )
+        assert not drifted, regression_message(case, drifted)
 
     def test_the_signal_summary_matches(self, case: str) -> None:
         """Metrics can coincide while the strategy's behaviour changed."""
@@ -143,16 +190,20 @@ class TestGoldenResults:
         _, run = build_run(expected)
         trades = build_result(run).as_dict()["trades"]
 
-        assert trades[:5] == expected["first_trades"]
-        assert trades[-5:] == expected["last_trades"]
+        drifted = drift_in_records(trades[:5], expected["first_trades"], "first_trades")
+        drifted += drift_in_records(trades[-5:], expected["last_trades"], "last_trades")
+
+        assert not drifted, regression_message(case, drifted)
 
     def test_the_equity_curve_endpoints_match(self, case: str) -> None:
         expected = load_expected(case)
         _, run = build_run(expected)
         curve = build_result(run).as_dict()["equity_curve"]
 
-        assert curve[:3] == expected["equity_curve_head"]
-        assert curve[-3:] == expected["equity_curve_tail"]
+        drifted = drift_in_records(curve[:3], expected["equity_curve_head"], "equity_curve_head")
+        drifted += drift_in_records(curve[-3:], expected["equity_curve_tail"], "equity_curve_tail")
+
+        assert not drifted, regression_message(case, drifted)
 
     def test_the_expectation_describes_the_committed_dataset(self, case: str) -> None:
         """Guards against expectations pinned against different bars."""
